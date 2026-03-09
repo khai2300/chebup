@@ -999,6 +999,7 @@ def admin_products(request):
             category_id = request.POST.get("category_id", "").strip()
             source_zone_id = request.POST.get("source_zone_id", "").strip()
             image_url = request.POST.get("image_url", "").strip()
+            uploaded_image = request.FILES.get("image")
             map_link = _normalize_map_link(request.POST.get("map_link", ""))
 
             try:
@@ -1025,8 +1026,132 @@ def admin_products(request):
                 image_url=image_url,
                 map_link=map_link,
             )
+            if uploaded_image:
+                product.image = uploaded_image
             product.save()
             messages.success(request, f"Da tao san pham #{product.id}.")
+            return redirect("shop:admin_products")
+
+        if action.startswith("delete:"):
+            product_id = action.split(":", 1)[1].strip()
+            product = Product.objects.filter(id=product_id).first()
+            if not product:
+                messages.error(request, "Khong tim thay san pham.")
+                return redirect("shop:admin_products")
+            product_name = product.name
+            product.delete()
+            messages.success(request, f"Da xoa san pham: {product_name}.")
+            return redirect("shop:admin_products")
+
+        if action == "bulk_delete_selected":
+            raw_selected_ids = request.POST.getlist("selected_product_ids")
+            selected_ids = []
+            seen_ids = set()
+            for raw_id in raw_selected_ids:
+                cleaned = (raw_id or "").strip()
+                if not cleaned.isdigit():
+                    continue
+                numeric_id = int(cleaned)
+                if numeric_id in seen_ids:
+                    continue
+                seen_ids.add(numeric_id)
+                selected_ids.append(numeric_id)
+
+            if not selected_ids:
+                messages.warning(request, "Ban chua chon san pham nao de xoa.")
+                return redirect("shop:admin_products")
+
+            selected_qs = Product.objects.filter(id__in=selected_ids)
+            selected_count = selected_qs.count()
+            selected_qs.delete()
+            if selected_count:
+                messages.success(request, f"Da xoa {selected_count} san pham da chon.")
+            else:
+                messages.warning(request, "Khong co san pham hop le de xoa.")
+            return redirect("shop:admin_products")
+
+        if action == "bulk_update":
+            raw_product_ids = request.POST.getlist("product_ids")
+            product_ids = []
+            seen_ids = set()
+            for raw_id in raw_product_ids:
+                cleaned = (raw_id or "").strip()
+                if not cleaned.isdigit():
+                    continue
+                numeric_id = int(cleaned)
+                if numeric_id in seen_ids:
+                    continue
+                seen_ids.add(numeric_id)
+                product_ids.append(numeric_id)
+
+            if not product_ids:
+                messages.error(request, "Khong co san pham nao de cap nhat.")
+                return redirect("shop:admin_products")
+
+            products = {product.id: product for product in Product.objects.filter(id__in=product_ids)}
+            updated_count = 0
+            failed_rows = []
+
+            for product_id in product_ids:
+                product = products.get(product_id)
+                if not product:
+                    failed_rows.append(str(product_id))
+                    continue
+
+                prefix = f"product_{product_id}_"
+                name = request.POST.get(f"{prefix}name", "").strip()
+                description = request.POST.get(f"{prefix}description", "").strip()
+                short_description = request.POST.get(f"{prefix}short_description", "").strip()
+                category_id = request.POST.get(f"{prefix}category_id", "").strip()
+                source_zone_id = request.POST.get(f"{prefix}source_zone_id", "").strip()
+                image_url = request.POST.get(f"{prefix}image_url", "").strip()
+                uploaded_image = request.FILES.get(f"{prefix}image")
+                clear_uploaded_image = request.POST.get(f"{prefix}clear_image") == "on"
+                map_link = _normalize_map_link(request.POST.get(f"{prefix}map_link", ""))
+
+                try:
+                    price = Decimal(request.POST.get(f"{prefix}price", "0").strip() or "0")
+                    stock = int(request.POST.get(f"{prefix}stock", "0").strip() or "0")
+                except Exception:
+                    failed_rows.append(str(product_id))
+                    continue
+
+                category = Category.objects.filter(id=category_id).first()
+                zone = ProductionZone.objects.filter(id=source_zone_id).first() if source_zone_id else None
+                if not category or not name:
+                    failed_rows.append(str(product_id))
+                    continue
+
+                product.name = name
+                product.description = description or short_description or "Dang cap nhat mo ta."
+                product.short_description = short_description
+                product.category = category
+                product.source_zone = zone
+                product.price = max(price, Decimal("0"))
+                product.stock = max(stock, 0)
+                product.image_url = image_url
+                product.map_link = map_link
+                if clear_uploaded_image and product.image:
+                    product.image.delete(save=False)
+                    product.image = None
+                if uploaded_image:
+                    if product.image:
+                        product.image.delete(save=False)
+                    product.image = uploaded_image
+                product.save()
+                updated_count += 1
+
+            if updated_count:
+                messages.success(request, f"Da cap nhat dong loat {updated_count} san pham.")
+            if failed_rows:
+                preview = ", ".join(f"#{row_id}" for row_id in failed_rows[:8])
+                suffix = "..." if len(failed_rows) > 8 else ""
+                messages.warning(
+                    request,
+                    f"Mot so dong khong hop le, bo qua: {preview}{suffix}.",
+                )
+            if not updated_count and not failed_rows:
+                messages.info(request, "Khong co thay doi nao duoc ap dung.")
             return redirect("shop:admin_products")
 
         if action == "update":
@@ -1042,6 +1167,8 @@ def admin_products(request):
             category_id = request.POST.get("category_id", "").strip()
             source_zone_id = request.POST.get("source_zone_id", "").strip()
             image_url = request.POST.get("image_url", "").strip()
+            uploaded_image = request.FILES.get("image")
+            clear_uploaded_image = request.POST.get("clear_image") == "on"
             map_link = _normalize_map_link(request.POST.get("map_link", ""))
 
             try:
@@ -1066,6 +1193,13 @@ def admin_products(request):
             product.stock = max(stock, 0)
             product.image_url = image_url
             product.map_link = map_link
+            if clear_uploaded_image and product.image:
+                product.image.delete(save=False)
+                product.image = None
+            if uploaded_image:
+                if product.image:
+                    product.image.delete(save=False)
+                product.image = uploaded_image
             product.save()
             messages.success(request, f"Da cap nhat san pham #{product.id}.")
             return redirect("shop:admin_products")
