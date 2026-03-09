@@ -1,0 +1,59 @@
+{% extends "shop/base.html" %}
+{% block title %}Dia chi giao hang{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Dia chi giao hang</h3>
+  <span class="badge rounded-pill text-bg-success px-3 py-2">{{ request.user.email }}</span>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card tea-card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">Dia chi giao hang</h5>
+        {% for address in addresses %}
+          <div class="address-row">
+            <div>
+              <strong>{{ address.recipient_name }} - {{ address.phone }}</strong>
+              <div class="text-muted">{{ address.full_address }}</div>
+              {% if address.is_default %}<span class="badge text-bg-success mt-1">Mac dinh</span>{% endif %}
+            </div>
+            <div class="d-flex gap-2">
+              {% if not address.is_default %}
+                <form method="post" action="{% url 'shop:set_default_address' address.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn-outline-success btn-sm">Dat mac dinh</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        {% empty %}
+          <p class="mb-0">Chua co dia chi nao.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card tea-card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">Them dia chi moi</h5>
+        <form method="post" action="{% url 'shop:add_address' %}">
+          {% csrf_token %}
+          <input class="form-control mb-2" name="recipient_name" placeholder="Nguoi nhan" required>
+          <input class="form-control mb-2" name="phone" placeholder="So dien thoai" required>
+          <input class="form-control mb-2" name="street" placeholder="So nha, duong" required>
+          <input class="form-control mb-2" name="ward" placeholder="Phuong/Xa" required>
+          <input class="form-control mb-2" name="district" placeholder="Quan/Huyen" required>
+          <input class="form-control mb-2" name="city" placeholder="Tinh/Thanh pho" required>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="setDefault" name="set_default">
+            <label class="form-check-label" for="setDefault">Dat lam dia chi mac dinh</label>
+          </div>
+          <button class="btn btn-success w-100">Luu dia chi</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

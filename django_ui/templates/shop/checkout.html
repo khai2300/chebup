@@ -1,0 +1,117 @@
+{% extends "shop/base.html" %}
+{% block title %}Thanh toan{% endblock %}
+{% block content %}
+<h3 class="mb-3">Thanh toan don hang</h3>
+<form method="post" class="row g-4">
+  {% csrf_token %}
+  <div class="col-lg-7">
+    <div class="card tea-card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">Dia chi giao hang</h5>
+          <a href="{% url 'shop:account' %}" class="small text-decoration-none">Quan ly dia chi</a>
+        </div>
+        {% for address in addresses %}
+          <label class="shipping-option d-block">
+            <input type="radio" name="address_id" value="{{ address.id }}" {% if address.is_default %}checked{% endif %}>
+            <div>
+              <strong>{{ address.recipient_name }} - {{ address.phone }}</strong><br>
+              <span class="text-muted">{{ address.full_address }}</span>
+            </div>
+          </label>
+        {% empty %}
+          <p class="mb-0 text-danger">Ban chua co dia chi. Vui long them dia chi truoc khi dat hang.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card tea-card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-2">Phuong thuc thanh toan</h5>
+        {% for method in payment_methods %}
+          <label class="shipping-option d-block">
+            <input
+              type="radio"
+              name="payment_method"
+              value="{{ method.value }}"
+              {% if selected_payment_method == method.value %}checked{% endif %}
+            >
+            <div>{{ method.label }}</div>
+          </label>
+        {% endfor %}
+
+        <div
+          id="bankTransferInfo"
+          class="card border-0 bg-light mt-3 {% if selected_payment_method != bank_transfer.method_value %}d-none{% endif %}"
+        >
+          <div class="card-body">
+            <h6 class="mb-2">Thanh toan online bang ngan hang</h6>
+            <div class="small mb-2">
+              <div><strong>Ngan hang:</strong> {{ bank_transfer.bank_name }}</div>
+              <div><strong>Chu tai khoan:</strong> {{ bank_transfer.account_name }}</div>
+              <div><strong>So tai khoan:</strong> {{ bank_transfer.account_number }}</div>
+              <div><strong>Noi dung CK:</strong> {{ bank_transfer.transfer_note }}</div>
+            </div>
+            <img
+              src="{{ bank_transfer.qr_url }}"
+              alt="QR thanh toan ngan hang"
+              class="img-fluid rounded border"
+              style="max-width: 280px;"
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card tea-card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">Tom tat don</h5>
+        {% for item in cart_items %}
+          <div class="d-flex justify-content-between small mb-2">
+            <span>{{ item.product.name }} x {{ item.quantity }}</span>
+            <span>{{ item.subtotal|floatformat:0 }} VND</span>
+          </div>
+        {% endfor %}
+        <hr>
+        <label class="form-label">Ma giam gia</label>
+        <input name="promo_code" value="{{ promo_code }}" class="form-control mb-3" placeholder="Nhap ma khuyen mai">
+        <div class="d-flex justify-content-between mb-2">
+          <span>Tam tinh</span>
+          <span>{{ summary.subtotal|floatformat:0 }} VND</span>
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+          <span>Giam gia</span>
+          <span>- {{ summary.discount|floatformat:0 }} VND</span>
+        </div>
+        <div class="d-flex justify-content-between fw-semibold border-top pt-2 mb-3">
+          <span>Tong thanh toan</span>
+          <span class="tea-price">{{ summary.total|floatformat:0 }} VND</span>
+        </div>
+        <button class="btn btn-success w-100">Xac nhan dat hang</button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (() => {
+    const radios = document.querySelectorAll('input[name="payment_method"]');
+    const bankInfo = document.getElementById("bankTransferInfo");
+    const bankMethodValue = "{{ bank_transfer.method_value }}";
+    if (!radios.length || !bankInfo) return;
+
+    const toggleBankInfo = () => {
+      const checked = document.querySelector('input[name="payment_method"]:checked');
+      const isBank = checked && checked.value === bankMethodValue;
+      bankInfo.classList.toggle("d-none", !isBank);
+    };
+
+    radios.forEach((radio) => radio.addEventListener("change", toggleBankInfo));
+    toggleBankInfo();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "shop/base.html" %}
+{% block title %}Admin - Nguoi dung{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Quan ly nguoi dung</h3>
+  <a href="{% url 'shop:admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">Ve dashboard</a>
+</div>
+<div class="card tea-card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Staff</th>
+          <th>Ngay tao</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>{% if user.is_staff %}Co{% else %}Khong{% endif %}</td>
+            <td>{{ user.date_joined|date:"d/m/Y H:i" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">Chua co nguoi dung.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "shop/base.html" %}
+{% block title %}San pham che bup{% endblock %}
+{% block content %}
+<section class="hero-spot mb-4">
+  <div class="row g-4 align-items-center">
+    <div class="col-lg-7">
+      <p class="hero-kicker mb-2">Bo suu tap che bup thu cong</p>
+      <h1 class="hero-title mb-3">Huong che bup nguyen vi, thu hoach theo mua</h1>
+      <p class="hero-lead mb-4">
+        Chon che xanh, che shan, che o long va cac dong pha san theo gu uong.
+        Ho tro dat nhanh, giao tan noi va theo doi don theo thoi gian thuc.
+      </p>
+      <div class="d-flex flex-wrap gap-2">
+        <span class="badge rounded-pill text-bg-light text-dark px-3 py-2">100% la bup non</span>
+        <span class="badge rounded-pill text-bg-light text-dark px-3 py-2">Dong goi hut chan khong</span>
+        <span class="badge rounded-pill text-bg-light text-dark px-3 py-2">Tu van vi tra theo gu</span>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="hero-panel p-4">
+        <h5 class="mb-3">Tim nhanh san pham</h5>
+        <form method="get" class="row g-2" id="searchForm">
+          <div class="col-12 position-relative">
+            <input id="searchInput" type="text" class="form-control" name="q" value="{{ q }}" placeholder="Tim theo ten, mo ta...">
+            <div id="suggestBox" class="suggest-box"></div>
+          </div>
+          <div class="col-md-7">
+            <select class="form-select" name="category">
+              <option value="">Tat ca danh muc</option>
+              {% for c in categories %}
+                <option value="{{ c.id }}" {% if c.id|stringformat:'s' == selected_category|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-5 d-grid">
+            <button class="btn btn-success" type="submit">Loc san pham</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Danh sach che bup</h3>
+    <small class="text-muted">{{ products|length }} san pham</small>
+  </div>
+  <div class="row g-3">
+    {% for product in products %}
+      {% include "shop/partials/product_card.html" with product=product %}
+    {% empty %}
+      <div class="col-12">
+        <div class="empty-state">
+          <h5>Khong tim thay san pham phu hop</h5>
+          <p class="mb-0">Thu doi tu khoa tim kiem hoac bo loc danh muc.</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const searchInput = document.getElementById("searchInput");
+  const suggestBox = document.getElementById("suggestBox");
+
+  async function fetchSuggest(keyword) {
+    const response = await fetch(`{% url 'shop:search_suggest' %}?q=${encodeURIComponent(keyword)}`);
+    if (!response.ok) return [];
+    return await response.json();
+  }
+
+  function renderSuggest(items) {
+    if (!items.length) {
+      suggestBox.innerHTML = "";
+      return;
+    }
+    suggestBox.innerHTML = items
+      .map(item => `<button type="button" class="suggest-item">${item}</button>`)
+      .join("");
+    suggestBox.querySelectorAll(".suggest-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        searchInput.value = btn.textContent.trim();
+        suggestBox.innerHTML = "";
+      });
+    });
+  }
+
+  searchInput?.addEventListener("input", async (event) => {
+    const keyword = event.target.value.trim();
+    if (!keyword) {
+      suggestBox.innerHTML = "";
+      return;
+    }
+    const data = await fetchSuggest(keyword);
+    renderSuggest(data);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!suggestBox.contains(event.target) && event.target !== searchInput) {
+      suggestBox.innerHTML = "";
+    }
+  });
+</script>
+{% endblock %}

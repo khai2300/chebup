@@ -1,0 +1,42 @@
+{% extends "shop/base.html" %}
+{% block title %}Lich su don hang{% endblock %}
+{% block content %}
+<h3 class="mb-3">Lich su don hang</h3>
+
+{% for order in orders %}
+  <div class="card tea-card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">Don #{{ order.id }}</h5>
+          <p class="mb-1 small text-muted">{{ order.created_at|date:"d/m/Y H:i" }}</p>
+          <p class="mb-1">{{ order.address.full_address }}</p>
+          <span class="badge text-bg-secondary">{{ order.status }}</span>
+        </div>
+        <div class="text-end">
+          <p class="tea-price mb-2">{{ order.final_amount|floatformat:0 }} VND</p>
+          {% if order.status == "Pending" %}
+            <form method="post" action="{% url 'shop:cancel_order' order.id %}">
+              {% csrf_token %}
+              <button class="btn btn-outline-danger btn-sm">Huy don</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+      <hr>
+      {% for item in order.items.all %}
+        <div class="d-flex justify-content-between small mb-1">
+          <span>{{ item.product_name }} x {{ item.quantity }}</span>
+          <span>{{ item.subtotal|floatformat:0 }} VND</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% empty %}
+  <div class="empty-state">
+    <h5>Ban chua co don nao</h5>
+    <p class="mb-3">Hay chon san pham che bup va dat don ngay.</p>
+    <a href="{% url 'shop:home' %}" class="btn btn-success">Mua ngay</a>
+  </div>
+{% endfor %}
+{% endblock %}

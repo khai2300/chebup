@@ -1,0 +1,243 @@
+:root {
+  --tea-900: #1d3b2c;
+  --tea-700: #2f5c42;
+  --tea-500: #4f8a62;
+  --tea-200: #dceadf;
+  --tea-100: #f0f6f0;
+  --leaf-cream: #f8f4e8;
+  --ink: #1f2925;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  color: var(--ink);
+  background: linear-gradient(180deg, #f6fbf6 0%, #f0f8ef 45%, #edf4eb 100%);
+  min-height: 100vh;
+}
+
+.tea-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 85% 15%, rgba(79, 138, 98, 0.14), transparent 22%),
+    radial-gradient(circle at 12% 80%, rgba(47, 92, 66, 0.13), transparent 23%);
+  z-index: -1;
+}
+
+.nav-shell {
+  background: linear-gradient(90deg, #1d3b2c 0%, #2e6646 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.brand-mark {
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.page-shell {
+  position: relative;
+}
+
+.hero-spot {
+  border-radius: 28px;
+  padding: 1.6rem;
+  background: linear-gradient(135deg, var(--leaf-cream) 0%, #f7fcf5 45%, #eef8ee 100%);
+  border: 1px solid #dbe8db;
+}
+
+.hero-kicker {
+  display: inline-flex;
+  background: #e6f1e6;
+  border: 1px solid #d0e3d0;
+  color: var(--tea-700);
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.hero-title {
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+  color: #244432;
+  line-height: 1.12;
+}
+
+.hero-lead {
+  color: #2c4034;
+  max-width: 64ch;
+}
+
+.hero-panel {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid #d7e6d7;
+  border-radius: 18px;
+}
+
+.tea-card {
+  border-radius: 18px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.tea-thumb {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.tea-placeholder {
+  width: 100%;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(
+    135deg,
+    #ebf4ea 0px,
+    #ebf4ea 12px,
+    #e1efe1 12px,
+    #e1efe1 24px
+  );
+  color: #3c5f4a;
+  font-weight: 600;
+}
+
+.tea-price {
+  font-weight: 800;
+  color: #266544;
+}
+
+.empty-state {
+  background: #ffffff;
+  border: 1px dashed #bfccbf;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.suggest-box {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #d6dfd6;
+  border-radius: 10px;
+  box-shadow: 0 16px 35px rgba(24, 53, 37, 0.11);
+  overflow: hidden;
+  z-index: 30;
+}
+
+.suggest-item {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  background: transparent;
+}
+
+.suggest-item:hover {
+  background: #f3f8f3;
+}
+
+.shipping-option {
+  border: 1px solid #dbe7db;
+  border-radius: 12px;
+  padding: 0.7rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  background: #fff;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.shipping-option:has(input:checked) {
+  border-color: #49a266;
+  background: #f1faef;
+}
+
+.address-row {
+  border: 1px solid #d7e3d7;
+  border-radius: 12px;
+  padding: 0.8rem;
+  margin-bottom: 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.chat-shell {
+  border: 1px solid #dbe7db;
+  border-radius: 14px;
+  height: 430px;
+  overflow: auto;
+  padding: 1rem;
+  background: linear-gradient(180deg, #f8fdfa, #f2f8f4);
+}
+
+.chat-row {
+  display: flex;
+  margin-bottom: 0.65rem;
+}
+
+.chat-row.user {
+  justify-content: flex-end;
+}
+
+.chat-row.assistant {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: min(78%, 620px);
+  border-radius: 16px;
+  padding: 0.65rem 0.85rem;
+  white-space: pre-wrap;
+}
+
+.chat-bubble.user {
+  background: #2b7450;
+  color: #fff;
+  border-bottom-right-radius: 6px;
+}
+
+.chat-bubble.assistant {
+  background: #ffffff;
+  border: 1px solid #d6e4d6;
+  color: #24352a;
+  border-bottom-left-radius: 6px;
+}
+
+.trace-map {
+  width: 100%;
+  height: 420px;
+  border-radius: 12px;
+  border: 1px solid #d3e0d3;
+}
+
+.object-fit-cover {
+  object-fit: cover;
+}
+
+@media (max-width: 992px) {
+  .hero-spot {
+    border-radius: 18px;
+  }
+  .tea-thumb {
+    height: 190px;
+  }
+  .chat-shell {
+    height: 360px;
+  }
+  .trace-map {
+    height: 340px;
+  }
+}

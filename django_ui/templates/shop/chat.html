@@ -1,0 +1,64 @@
+﻿{% extends "shop/base.html" %}
+{% block title %}Chat AI ho tro{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <h3 class="mb-0">Chat AI ho tro khach hang</h3>
+    {% if chat_mode == "llm" %}
+      <span id="modeBadge" class="badge text-bg-success">AI online</span>
+    {% else %}
+      <span id="modeBadge" class="badge text-bg-warning text-dark">Fallback mode</span>
+    {% endif %}
+  </div>
+  <button id="clearChatBtn" class="btn btn-outline-secondary btn-sm" type="button">Xoa lich su</button>
+</div>
+
+<div class="card tea-card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="chat-shell" id="chatShell">
+      {% if chat_history %}
+        {% for item in chat_history %}
+          <div class="chat-row {% if item.role == 'user' %}user{% else %}assistant{% endif %}">
+            <div class="chat-bubble {% if item.role == 'user' %}user{% else %}assistant{% endif %}">
+              {{ item.content }}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="chat-row assistant">
+          <div class="chat-bubble assistant">
+            Chao ban, minh co the ho tro tim che bup, kiem tra don va giai dap thanh toan.
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if quick_replies %}
+      <div class="mt-3 d-flex flex-wrap gap-2">
+        {% for text in quick_replies %}
+          <button type="button" class="btn btn-outline-success btn-sm quick-reply">{{ text }}</button>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form id="chatForm" class="mt-3">
+      {% csrf_token %}
+      <div class="input-group">
+        <textarea id="chatInput" class="form-control" rows="2" placeholder="Nhap cau hoi... (Enter gui, Shift+Enter xuong dong)" required></textarea>
+        <button id="sendBtn" class="btn btn-success" type="submit">Gui</button>
+      </div>
+      <div class="form-text">Meo: hoi theo ngu canh, vi du "kiem tra don #12" de AI tra loi sat hon.</div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/shop/js/chat.js"></script>
+<script>
+  window.ChatConfig = {
+    endpoint: "{% url 'shop:chat_api' %}",
+    resetEndpoint: "{% url 'shop:chat_reset' %}"
+  };
+</script>
+{% endblock %}

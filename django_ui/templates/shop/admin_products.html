@@ -1,0 +1,166 @@
+{% extends "shop/base.html" %}
+{% block title %}Admin - San pham{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Quan ly san pham</h3>
+  <a href="{% url 'shop:admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">Ve dashboard</a>
+</div>
+
+<div class="card tea-card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <h5 class="mb-3">Them san pham moi</h5>
+    <form method="post" class="row g-2">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <div class="col-md-4">
+        <input class="form-control" name="name" placeholder="Ten san pham" required>
+      </div>
+      <div class="col-md-2">
+        <input class="form-control" name="price" type="number" min="0" step="1" placeholder="Gia" required>
+      </div>
+      <div class="col-md-2">
+        <input class="form-control" name="stock" type="number" min="0" step="1" placeholder="Ton kho" required>
+      </div>
+      <div class="col-md-4">
+        <select class="form-select" name="category_id" required>
+          <option value="">Chon danh muc</option>
+          {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <select class="form-select" name="source_zone_id">
+          <option value="">Chon khu nguon (truy xuat)</option>
+          {% for zone in zones %}
+            <option value="{{ zone.id }}">{{ zone.name }} - {{ zone.province }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <input class="form-control" name="short_description" placeholder="Mo ta ngan">
+      </div>
+      <div class="col-md-6">
+        <input class="form-control" name="description" placeholder="Mo ta chi tiet">
+      </div>
+      <div class="col-md-3">
+        <input class="form-control" name="image_url" placeholder="Hoac dan URL anh">
+      </div>
+      <div class="col-md-3">
+        <textarea class="form-control" name="map_link" rows="2" placeholder="Dan link map hoac iframe Google Maps"></textarea>
+      </div>
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-success" type="submit">Them san pham</button>
+      </div>
+      <div class="col-12">
+        <small class="text-muted">
+          Sau khi tao san pham, ban co the quet QR trong danh sach ben duoi de mo ban do truy xuat nguon goc.
+        </small>
+        <small class="text-muted d-block">
+          O map cho phep dan full iframe Google Maps, he thong se tu dong lay src de hien thi.
+        </small>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card tea-card border-0 shadow-sm">
+  <div class="card-body">
+    <h5 class="mb-3">Danh sach san pham (admin co the sua/xoa)</h5>
+    {% for product in products %}
+      <form method="post" class="border rounded p-3 mb-3 bg-white">
+        {% csrf_token %}
+        <input type="hidden" name="product_id" value="{{ product.id }}">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>San pham #{{ product.id }}</strong>
+          <small class="text-muted">Cap nhat truc tiep trong form</small>
+        </div>
+        <div class="row g-2">
+          <div class="col-lg-3">
+            {% if product.image %}
+              <img src="{{ product.image.url }}" alt="{{ product.name }}" width="96" height="96" class="rounded border object-fit-cover mb-2">
+            {% elif product.image_url %}
+              <img src="{{ product.image_url }}" alt="{{ product.name }}" width="96" height="96" class="rounded border object-fit-cover mb-2">
+            {% endif %}
+            <input class="form-control form-control-sm mb-2" name="image_url" value="{{ product.image_url }}" placeholder="URL anh">
+          </div>
+          <div class="col-lg-4">
+            <input class="form-control form-control-sm mb-2" name="name" value="{{ product.name }}" placeholder="Ten san pham" required>
+            <input class="form-control form-control-sm mb-2" name="short_description" value="{{ product.short_description }}" placeholder="Mo ta ngan">
+            <textarea class="form-control form-control-sm" rows="3" name="description" placeholder="Mo ta chi tiet">{{ product.description }}</textarea>
+            <textarea class="form-control form-control-sm mt-2" name="map_link" rows="2" placeholder="Dan link map hoac iframe Google Maps">{{ product.map_link }}</textarea>
+          </div>
+          <div class="col-lg-2">
+            <select class="form-select form-select-sm mb-2" name="category_id" required>
+              {% for category in categories %}
+                <option value="{{ category.id }}" {% if category.id == product.category_id %}selected{% endif %}>
+                  {{ category.name }}
+                </option>
+              {% endfor %}
+            </select>
+            <select class="form-select form-select-sm" name="source_zone_id">
+              <option value="">Chua gan khu nguon</option>
+              {% for zone in zones %}
+                <option value="{{ zone.id }}" {% if product.source_zone_id == zone.id %}selected{% endif %}>
+                  {{ zone.name }} - {{ zone.province }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-lg-1">
+            <input class="form-control form-control-sm mb-2" name="price" type="number" min="0" step="1" value="{{ product.price|floatformat:0 }}" required>
+            <input class="form-control form-control-sm" name="stock" type="number" min="0" step="1" value="{{ product.stock }}" required>
+          </div>
+          <div class="col-lg-2 d-grid gap-2">
+            <button class="btn btn-sm btn-success" type="submit" name="action" value="update">Luu thay doi</button>
+            <button
+              class="btn btn-sm btn-outline-danger"
+              type="submit"
+              name="action"
+              value="delete"
+              onclick="return confirm('Ban chac chan muon xoa san pham nay?');"
+            >
+              Xoa san pham
+            </button>
+            <a href="{% url 'shop:trace_product' product.id %}" class="btn btn-sm btn-outline-success">Mo map nguon goc</a>
+          </div>
+        </div>
+        <div class="mt-3 p-2 rounded border bg-light-subtle d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <small class="text-muted d-block">QR truy xuat san pham #{{ product.id }}</small>
+            {% if product.source_zone %}
+              <small class="d-block">
+                Nguon: <strong>{{ product.source_zone.name }}</strong> ({{ product.source_zone.code }}) - {{ product.source_zone.province }}
+              </small>
+            {% else %}
+              <small class="text-danger d-block">San pham chua gan khu nguon, map se hien vi tri mac dinh.</small>
+            {% endif %}
+            <a href="{% url 'shop:product_trace_qr' product.id %}" target="_blank" rel="noopener" class="small text-decoration-none">
+              Mo anh QR de in
+            </a>
+            <a href="{% url 'shop:product_trace_qr' product.id %}?download=1" class="small text-decoration-none d-block">
+              Tai QR truy xuat
+            </a>
+            {% if product.map_link %}
+              <a href="{{ product.map_link }}" target="_blank" rel="noopener" class="small text-decoration-none d-block">
+                Mo link map da gan
+              </a>
+            {% else %}
+              <small class="text-muted d-block">Chua gan link map ngoai.</small>
+            {% endif %}
+          </div>
+          <img
+            src="{% url 'shop:product_trace_qr' product.id %}"
+            alt="QR truy xuat {{ product.name }}"
+            width="92"
+            height="92"
+            class="rounded border bg-white"
+          >
+        </div>
+      </form>
+    {% empty %}
+      <p class="text-muted mb-0">Chua co du lieu san pham.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

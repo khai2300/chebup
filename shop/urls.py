@@ -1,0 +1,38 @@
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path("", views.home, name="home"),
+    path("api/search-suggest", views.search_suggest, name="search_suggest"),
+    path("register/", views.register_view, name="register"),
+    path("login/", views.login_view, name="login"),
+    path("logout/", views.logout_view, name="logout"),
+    path("product/<int:product_id>/", views.product_detail, name="product_detail"),
+    path("product/<int:product_id>/trace-qr.png", views.product_trace_qr, name="product_trace_qr"),
+    path("trace/product/<int:product_id>/", views.trace_product, name="trace_product"),
+    path("cart/", views.cart, name="cart"),
+    path("cart/add/<int:product_id>/", views.add_to_cart, name="add_to_cart"),
+    path("cart/update/<int:item_id>/", views.update_cart, name="update_cart"),
+    path("cart/remove/<int:item_id>/", views.remove_cart, name="remove_cart"),
+    path("checkout/", views.checkout, name="checkout"),
+    path("account/", views.account, name="account"),
+    path("account/address/add/", views.add_address, name="add_address"),
+    path(
+        "account/address/<int:address_id>/set-default/",
+        views.set_default_address,
+        name="set_default_address",
+    ),
+    path("orders/", views.orders, name="orders"),
+    path("orders/<int:order_id>/cancel/", views.cancel_order, name="cancel_order"),
+    path("orders/<int:order_id>/trace-qr.png", views.order_trace_qr, name="order_trace_qr"),
+    path("trace/order/<uuid:token>/", views.trace_order, name="trace_order"),
+    path("chat/", views.chat_view, name="chat"),
+    path("chat/api/", views.chat_api, name="chat_api"),
+    path("chat/reset/", views.chat_reset, name="chat_reset"),
+    path("dashboard/admin/", views.admin_dashboard, name="admin_dashboard"),
+    path("dashboard/admin/products/", views.admin_products, name="admin_products"),
+    path("dashboard/admin/orders/", views.admin_orders, name="admin_orders"),
+    path("dashboard/admin/users/", views.admin_users, name="admin_users"),
+    path("dashboard/admin/promotions/", views.admin_promotions, name="admin_promotions"),
+]
