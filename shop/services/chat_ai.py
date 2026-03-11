@@ -18,6 +18,19 @@ SYSTEM_PROMPT = (
     "Neu user hoi ve san pham/tra, uu tien de xuat san pham tu he thong neu co."
 )
 
+PROMO_LIMIT = 5
+PRODUCT_SUGGESTION_LIMIT = 3
+
+GREETING_KEYWORDS = ["xin chao", "chao", "hello", "hi"]
+PROMO_KEYWORDS = ["khuyen mai", "voucher", "ma giam", "giam gia"]
+ORDER_KEYWORDS = ["don hang", "trang thai", "kiem tra don", "order", "ma don"]
+CANCEL_KEYWORDS = ["huy don", "huy"]
+SHIPPING_KEYWORDS = ["giao hang", "ship", "van chuyen"]
+PAYMENT_KEYWORDS = ["thanh toan", "payment", "cod", "bank", "vi"]
+ADDRESS_KEYWORDS = ["dia chi", "address"]
+PRODUCT_KEYWORDS = ["goi y", "de xuat", "san pham", "che", "tra", "nen mua", "mua gi"]
+THANKS_KEYWORDS = ["cam on", "thanks", "thank"]
+
 
 def _format_money(value):
     amount = value if isinstance(value, Decimal) else Decimal(str(value or 0))
@@ -37,7 +50,12 @@ def _active_promotions():
         else:
             value = _format_money(promo.value)
         promos.append(f"{promo.code} ({value})")
-    return promos[:5]
+    return promos[:PROMO_LIMIT]
+
+
+def _contains_any(message, keywords):
+    text = (message or "").lower()
+    return any(word in text for word in keywords)
 
 
 def _extract_order_id(text):
@@ -82,23 +100,24 @@ def _recommend_products(user_message, limit=3):
 
 
 def _looks_like_product_query(message):
-    text = (message or "").lower()
-    keywords = ["goi y", "de xuat", "san pham", "che", "tra", "nen mua", "mua gi"]
-    return any(word in text for word in keywords)
+    return _contains_any(message, PRODUCT_KEYWORDS)
+
+
+def _format_product_line(product):
+    desc = (product.short_description or "").strip()
+    desc_text = f" - {desc}" if desc else ""
+    return f"- {product.name} ({_format_money(product.price)}){desc_text} | /product/{product.id}/"
+
+
+def _format_product_lines(products):
+    return [_format_product_line(product) for product in products]
 
 
 def _build_product_suggestions(message, limit=3):
     if not _looks_like_product_query(message):
         return [], []
     products = _recommend_products(message, limit=limit)
-    lines = []
-    for product in products:
-        desc = (product.short_description or "").strip()
-        desc_text = f" - {desc}" if desc else ""
-        lines.append(
-            f"- {product.name} ({_format_money(product.price)}){desc_text} | /product/{product.id}/"
-        )
-    return products, lines
+    return products, _format_product_lines(products)
 
 
 def _build_user_context(user):
@@ -139,7 +158,7 @@ def _rule_based_reply(user, user_message):
     if not message:
         return "Ban cu nhan cau hoi, minh se ho tro ngay."
 
-    if any(word in message for word in ["xin chao", "chao", "hello", "hi"]):
+    if _contains_any(message, GREETING_KEYWORDS):
         latest = Order.objects.filter(user=user).order_by("-created_at").first()
         if latest:
             return (
@@ -148,13 +167,13 @@ def _rule_based_reply(user, user_message):
             )
         return f"Chao {user.username}. Ban can minh goi y che, kiem tra don hay ma giam gia?"
 
-    if any(word in message for word in ["khuyen mai", "voucher", "ma giam", "giam gia"]):
+    if _contains_any(message, PROMO_KEYWORDS):
         promos = _active_promotions()
         if promos:
             return "Hien shop dang co: " + ", ".join(promos) + ". Ban nhap ma o buoc checkout."
         return "Hien tai chua co ma giam gia dang hoat dong."
 
-    if any(word in message for word in ["don hang", "trang thai", "kiem tra don", "order", "ma don"]):
+    if _contains_any(message, ORDER_KEYWORDS):
         target_id = _extract_order_id(message)
         order_qs = Order.objects.filter(user=user)
         if target_id:
@@ -168,7 +187,7 @@ def _rule_based_reply(user, user_message):
             )
         return "Minh chua tim thay don phu hop. Ban thu gui ma don dang #123."
 
-    if any(word in message for word in ["huy don", "huy"]):
+    if _contains_any(message, CANCEL_KEYWORDS):
         pending = Order.objects.filter(user=user, status=Order.STATUS_PENDING).order_by("-created_at")
         if pending.exists():
             ids = ", ".join(f"#{order.id}" for order in pending[:3])
@@ -178,7 +197,7 @@ def _rule_based_reply(user, user_message):
             )
         return "Hien tai ban khong co don Pending de huy."
 
-    if any(word in message for word in ["giao hang", "ship", "van chuyen"]):
+    if _contains_any(message, SHIPPING_KEYWORDS):
         shipping_order = (
             Order.objects.filter(user=user, status__in=[Order.STATUS_PROCESSING, Order.STATUS_SHIPPED])
             .order_by("-created_at")
@@ -191,36 +210,25 @@ def _rule_based_reply(user, user_message):
             )
         return "Thoi gian giao thuong 1-3 ngay lam viec tuy khu vuc."
 
-    if any(word in message for word in ["thanh toan", "payment", "cod", "bank", "vi"]):
+    if _contains_any(message, PAYMENT_KEYWORDS):
         return (
             "Shop ho tro 2 cach thanh toan: COD va thanh toan online bang ngan hang (co ma QR). "
             "Neu ban muon nhan hang moi tra tien thi chon COD."
         )
 
-    if any(word in message for word in ["dia chi", "address"]):
+    if _contains_any(message, ADDRESS_KEYWORDS):
         count = Address.objects.filter(user=user).count()
         if count == 0:
             return "Ban chua co dia chi. Vao Tai khoan de them dia chi truoc khi checkout."
         return f"Ban dang co {count} dia chi giao hang. Ban co the dat 1 dia chi mac dinh."
 
-    if any(word in message for word in ["goi y", "che", "tra", "san pham", "nen mua"]):
-        products = _recommend_products(message, limit=3)
-        if products:
-            lines = []
-            for product in products:
-                desc = (product.short_description or "").strip()
-                desc_text = f" - {desc}" if desc else ""
-                lines.append(
-                    f"- {product.name} ({_format_money(product.price)}){desc_text} | /product/{product.id}/"
-                )
-            return (
-                "Minh goi y ban:\n"
-                + "\n".join(lines)
-                + "\nNeu can minh loc theo tam gia cu the."
-            )
+    if _contains_any(message, PRODUCT_KEYWORDS):
+        _, lines = _build_product_suggestions(message, limit=PRODUCT_SUGGESTION_LIMIT)
+        if lines:
+            return "Minh goi y ban:\n" + "\n".join(lines) + "\nNeu can minh loc theo tam gia cu the."
         return "Kho san pham dang cap nhat, ban thu lai sau it phut."
 
-    if any(word in message for word in ["cam on", "thanks", "thank"]):
+    if _contains_any(message, THANKS_KEYWORDS):
         return "Rat vui duoc ho tro ban. Can gi ban cu nhan minh ngay."
 
     return (
@@ -357,7 +365,7 @@ def _call_gemini(system_text, conversation_messages, user_message):
 
 def generate_chat_reply(user, conversation_messages, user_message):
     context_text = _build_user_context(user)
-    products, product_lines = _build_product_suggestions(user_message, limit=3)
+    products, product_lines = _build_product_suggestions(user_message, limit=PRODUCT_SUGGESTION_LIMIT)
 
     system_text = f"{SYSTEM_PROMPT}\nContext user:\n{context_text}"
     if product_lines:

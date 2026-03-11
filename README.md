@@ -22,6 +22,12 @@ Mo trinh duyet: `http://127.0.0.1:8000`
 
 Neu chua co du lieu mau, trang chu se tu dong seed san pham khi truy cap lan dau.
 
+## Luu y GitHub
+
+- `.env`, `db.sqlite3`, `media/`, `staticfiles/`, `.venv/`, `__pycache__/` da duoc gitignore.
+- Mau bien moi truong nam trong `.env.example`.
+- Du lieu mau seeding nam trong `shop/services/seed.py`.
+
 ## Thu muc giao dien
 
 - `django_ui/templates/shop`
