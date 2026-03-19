@@ -1,13 +1,14 @@
-import os
+﻿import os
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import ChatMessage, ChatSession
-from .services.chat_ai import generate_chat_reply, quick_replies
+from .services.chat_ai import generate_chat_reply, quick_replies, suggest_products_for_chat
 
 
 @login_required
@@ -39,13 +40,39 @@ def chat_api(request):
         return JsonResponse({"response": "Ban hay nhap noi dung can ho tro.", "mode": "validation"}, status=400)
 
     session_obj = _get_or_create_chat_session(request.user)
-    conversation = list(
-        session_obj.messages.exclude(role=ChatMessage.ROLE_SYSTEM).values("role", "content")
-    )
+    conversation = list(session_obj.messages.exclude(role=ChatMessage.ROLE_SYSTEM).values("role", "content"))
 
     ChatMessage.objects.create(session=session_obj, role=ChatMessage.ROLE_USER, content=message)
     response, mode = generate_chat_reply(request.user, conversation, message)
     ChatMessage.objects.create(session=session_obj, role=ChatMessage.ROLE_ASSISTANT, content=response)
+
+    # None -> lay limit tu env trong service, de mo rong de dang sau nay.
+    suggested_products = suggest_products_for_chat(message, limit=None)
+
+    products_payload = []
+    for product in suggested_products:
+        image_url = ""
+        if product.image:
+            try:
+                image_url = product.image.url
+            except Exception:
+                image_url = ""
+        if not image_url:
+            image_url = product.image_url or ""
+
+        products_payload.append(
+            {
+                "id": product.id,
+                "name": product.name,
+                "category": product.category.name if product.category else "",
+                "stock": product.stock,
+                "short_description": product.short_description or "",
+                "price_text": f"{product.price:,.0f} VND",
+                "product_url": reverse("shop:product_detail", args=[product.id]),
+                "add_to_cart_url": reverse("shop:add_to_cart", args=[product.id]),
+                "image_url": image_url,
+            }
+        )
 
     if session_obj.title == "Tro chuyen ho tro" and message:
         session_obj.title = message[:80]
@@ -56,6 +83,7 @@ def chat_api(request):
             "response": response,
             "mode": mode,
             "timestamp": timezone.localtime().strftime("%H:%M"),
+            "products": products_payload,
         }
     )
 

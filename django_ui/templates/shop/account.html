@@ -1,8 +1,8 @@
 {% extends "shop/base.html" %}
-{% block title %}Dia chi giao hang{% endblock %}
+{% block title %}Địa chỉ giao hàng{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h3 class="mb-0">Dia chi giao hang</h3>
+  <h3 class="mb-0">Địa chỉ giao hàng</h3>
   <span class="badge rounded-pill text-bg-success px-3 py-2">{{ request.user.email }}</span>
 </div>
 
@@ -10,29 +10,29 @@
   <div class="col-lg-7">
     <div class="card tea-card border-0 shadow-sm">
       <div class="card-body">
-        <h5 class="mb-3">Dia chi giao hang</h5>
+        <h5 class="mb-3">Địa chỉ giao hàng</h5>
         {% for address in addresses %}
           <div class="address-row">
             <div>
               <strong>{{ address.recipient_name }} - {{ address.phone }}</strong>
               <div class="text-muted">{{ address.full_address }}</div>
-              {% if address.is_default %}<span class="badge text-bg-success mt-1">Mac dinh</span>{% endif %}
+              {% if address.is_default %}<span class="badge text-bg-success mt-1">Mặc định</span>{% endif %}
             </div>
             <div class="d-flex gap-2">
               {% if not address.is_default %}
                 <form method="post" action="{% url 'shop:set_default_address' address.id %}">
                   {% csrf_token %}
-                  <button class="btn btn-outline-success btn-sm">Dat mac dinh</button>
+                  <button class="btn btn-outline-success btn-sm">Đặt mặc định</button>
                 </form>
               {% endif %}
               <form method="post" action="{% url 'shop:delete_address' address.id %}">
                 {% csrf_token %}
-                <button class="btn btn-outline-danger btn-sm">Xoa</button>
+                <button class="btn btn-outline-danger btn-sm">Xóa</button>
               </form>
             </div>
           </div>
         {% empty %}
-          <p class="mb-0">Chua co dia chi nao.</p>
+          <p class="mb-0">Chưa có địa chỉ nào.</p>
         {% endfor %}
       </div>
     </div>
@@ -41,20 +41,20 @@
   <div class="col-lg-5">
     <div class="card tea-card border-0 shadow-sm">
       <div class="card-body">
-        <h5 class="mb-3">Them dia chi moi</h5>
+        <h5 class="mb-3">Thêm địa chỉ mới</h5>
         <form method="post" action="{% url 'shop:add_address' %}">
           {% csrf_token %}
-          <input class="form-control mb-2" name="recipient_name" placeholder="Nguoi nhan" required>
-          <input class="form-control mb-2" name="phone" placeholder="So dien thoai" required>
-          <input class="form-control mb-2" name="street" placeholder="So nha, duong" required>
-          <input class="form-control mb-2" name="ward" placeholder="Phuong/Xa" required>
-          <input class="form-control mb-2" name="district" placeholder="Quan/Huyen" required>
-          <input class="form-control mb-2" name="city" placeholder="Tinh/Thanh pho" required>
+          <input class="form-control mb-2" name="recipient_name" placeholder="Người nhận" required>
+          <input class="form-control mb-2" name="phone" placeholder="Số điện thoại" required>
+          <input class="form-control mb-2" name="street" placeholder="Số nhà, đường" required>
+          <input class="form-control mb-2" name="ward" placeholder="Phường/Xã" required>
+          <input class="form-control mb-2" name="district" placeholder="Quận/Huyện" required>
+          <input class="form-control mb-2" name="city" placeholder="Tỉnh/Thành phố" required>
           <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" id="setDefault" name="set_default">
-            <label class="form-check-label" for="setDefault">Dat lam dia chi mac dinh</label>
+            <label class="form-check-label" for="setDefault">Đặt làm địa chỉ mặc định</label>
           </div>
-          <button class="btn btn-success w-100">Luu dia chi</button>
+          <button class="btn btn-success w-100">Lưu địa chỉ</button>
         </form>
       </div>
     </div>

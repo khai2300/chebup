@@ -1,28 +1,28 @@
 {% extends "shop/base.html" %}
-{% block title %}Truy xuat don #{{ order.id }}{% endblock %}
+{% block title %}Truy xuất đơn #{{ order.id }}{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <div>
-    <h3 class="mb-0">Truy xuat nguon hang don #{{ order.id }}</h3>
+    <h3 class="mb-0">Truy xuất nguồn hàng đơn #{{ order.id }}</h3>
     <small class="text-muted">Token: {{ trace.token }}</small>
   </div>
-  <a href="{% url 'shop:home' %}" class="btn btn-outline-secondary btn-sm">Ve trang chu</a>
+  <a href="{% url 'shop:home' %}" class="btn btn-outline-secondary btn-sm">Về trang chủ</a>
 </div>
 
 <div class="row g-3 mb-3">
   <div class="col-md-4">
     <div class="card tea-card border-0 shadow-sm p-3 h-100">
-      <small class="text-muted">Ngay dat</small>
+      <small class="text-muted">Ngày đặt</small>
       <strong>{{ order.created_at|date:"d/m/Y H:i" }}</strong>
-      <small class="text-muted mt-2">Trang thai</small>
+      <small class="text-muted mt-2">Trạng thái</small>
       <strong>{{ order.status }}</strong>
-      <small class="text-muted mt-2">Tong thanh toan</small>
+      <small class="text-muted mt-2">Tổng thanh toán</small>
       <strong>{{ order.final_amount|floatformat:0 }} VND</strong>
     </div>
   </div>
   <div class="col-md-8">
     <div class="card tea-card border-0 shadow-sm p-3 h-100">
-      <small class="text-muted mb-2">San pham trong don</small>
+      <small class="text-muted mb-2">Sản phẩm trong đơn</small>
       {% for item in order.items.all %}
         <div class="d-flex justify-content-between small border-bottom py-1">
           <span>{{ item.product_name }} x {{ item.quantity }}</span>
@@ -36,7 +36,7 @@
 {% if zones %}
   <div class="card tea-card border-0 shadow-sm">
     <div class="card-body">
-      <h6 class="mb-2">Danh sach khu nguon</h6>
+      <h6 class="mb-2">Danh sách khu nguồn</h6>
       {% for zone in zones %}
         <div class="d-flex justify-content-between small border-bottom py-1">
           <span><strong>{{ zone.name }}</strong> ({{ zone.code|default:"N/A" }}) - {{ zone.province }}</span>

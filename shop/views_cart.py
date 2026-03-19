@@ -20,12 +20,12 @@ def add_to_cart(request, product_id):
     item, created = CartItem.objects.get_or_create(user=request.user, product=product, defaults={"quantity": 0})
     next_qty = item.quantity + quantity
     if next_qty > product.stock:
-        messages.error(request, "So luong vuot qua ton kho.")
+        messages.error(request, "Số lượng vượt quá tồn kho.")
         return redirect(request.META.get("HTTP_REFERER") or "shop:home")
 
     item.quantity = next_qty
     item.save(update_fields=["quantity"])
-    messages.success(request, "Da them vao gio hang.")
+    messages.success(request, "Đã thêm vào giỏ hàng.")
     return redirect(request.META.get("HTTP_REFERER") or "shop:cart")
 
 
@@ -53,16 +53,16 @@ def update_cart(request, item_id):
 
     if quantity <= 0:
         item.delete()
-        messages.info(request, "Da xoa san pham khoi gio.")
+        messages.info(request, "Đã xóa sản phẩm khỏi giỏ.")
         return redirect("shop:cart")
 
     if quantity > item.product.stock:
-        messages.error(request, "So luong vuot qua ton kho.")
+        messages.error(request, "Số lượng vượt quá tồn kho.")
         return redirect("shop:cart")
 
     item.quantity = quantity
     item.save(update_fields=["quantity"])
-    messages.success(request, "Da cap nhat gio hang.")
+    messages.success(request, "Đã cập nhật giỏ hàng.")
     return redirect("shop:cart")
 
 
@@ -71,5 +71,5 @@ def update_cart(request, item_id):
 def remove_cart(request, item_id):
     item = get_object_or_404(CartItem, id=item_id, user=request.user)
     item.delete()
-    messages.info(request, "Da xoa san pham.")
+    messages.info(request, "Đã xóa sản phẩm.")
     return redirect("shop:cart")

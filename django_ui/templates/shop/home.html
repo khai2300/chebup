@@ -1,18 +1,18 @@
 {% extends "shop/base.html" %}
-{% block title %}Che Bup Thai Nguyen{% endblock %}
+{% block title %}Chè Búp Thái Nguyên{% endblock %}
 {% block content %}
 <section class="hero-grid mb-4">
   <div class="hero-card hero-card--tea">
     <div class="hero-content">
-      <span class="hero-chip">Che Thai Nguyen</span>
-      <h1>Che Bup Thai Nguyen</h1>
+      <span class="hero-chip">Chè Thái Nguyên</span>
+      <h1>Chè Búp Thái Nguyên</h1>
       <p>
-        San pham che bup sach, thu hoach theo mua, sao thu cong va dong goi hut chan khong.
-        Huong com nong, vi dam va hau vi ngot sau.
+        Sản phẩm chè búp sạch, thu hoạch theo mùa, sao thủ công và đóng gói hút chân không.
+        Hương cốm nồng, vị đậm và hậu vị ngọt sâu.
       </p>
       <div class="hero-actions">
-        <a class="btn btn-light" href="{% url 'shop:home' %}?q=che">Xem chi tiet</a>
-        <a class="btn btn-outline-light" href="{% url 'shop:home' %}?q=tra">Xem san pham</a>
+        <a class="btn btn-light" href="{% url 'shop:home' %}?q=che">Xem chi tiết</a>
+        <a class="btn btn-outline-light" href="{% url 'shop:home' %}?q=tra">Xem sản phẩm</a>
       </div>
     </div>
   </div>
@@ -20,22 +20,22 @@
 
 <section class="quick-search mb-4">
   <div class="quick-search-inner">
-    <h5 class="mb-2">Tim nhanh san pham</h5>
+    <h5 class="mb-2">Tìm nhanh sản phẩm</h5>
     <form method="get" class="row g-2" id="searchForm">
       <div class="col-lg-6 position-relative">
-        <input id="searchInput" type="text" class="form-control" name="q" value="{{ q }}" placeholder="Tim theo ten, mo ta...">
+        <input id="searchInput" type="text" class="form-control" name="q" value="{{ q }}" placeholder="Tìm theo tên, mô tả...">
         <div id="suggestBox" class="suggest-box"></div>
       </div>
       <div class="col-lg-3">
         <select class="form-select" name="category">
-          <option value="">Tat ca danh muc</option>
+          <option value="">Tất cả danh mục</option>
           {% for c in categories %}
             <option value="{{ c.id }}" {% if c.id|stringformat:'s' == selected_category|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="col-lg-3 d-grid">
-        <button class="btn btn-success" type="submit">Loc san pham</button>
+        <button class="btn btn-success" type="submit">Lọc sản phẩm</button>
       </div>
     </form>
   </div>
@@ -44,10 +44,10 @@
 <section class="tea-list-section mb-5">
   <div class="section-head">
     <div>
-      <h3>Che Thai Nguyen ngon</h3>
-      <p>Danh sach san pham che bup thu cong dang co san.</p>
+      <h3>Chè Thái Nguyên ngon</h3>
+      <p>Danh sách sản phẩm chè búp thủ công đang có sẵn.</p>
     </div>
-    <a class="btn btn-outline-success btn-sm" href="{% url 'shop:home' %}">Xem tat ca</a>
+    <a class="btn btn-outline-success btn-sm" href="{% url 'shop:home' %}">Xem tất cả</a>
   </div>
   <div class="tea-list">
     {% for product in products|slice:":12" %}
@@ -58,7 +58,7 @@
           {% elif product.image_url %}
             <img src="{{ product.image_url }}" alt="{{ product.name }}">
           {% else %}
-            <div class="tea-list-placeholder">Chua co anh</div>
+            <div class="tea-list-placeholder">Chưa có ảnh</div>
           {% endif %}
         </a>
         <div class="tea-list-body">
@@ -69,17 +69,17 @@
           <p class="tea-list-desc">{{ product.short_description|default:product.description|truncatechars:140 }}</p>
           <div class="tea-list-meta">
             {% if product.source_zone %}
-              <span>Nguon: {{ product.source_zone.name }}</span>
+              <span>Nguồn: {{ product.source_zone.name }}</span>
             {% endif %}
             <span>Kho: {{ product.stock }}</span>
           </div>
           <div class="tea-list-footer">
             <div class="tea-list-price">{{ product.price|floatformat:0 }} VND</div>
             <div class="tea-list-actions">
-              <a class="btn btn-outline-success btn-sm" href="{% url 'shop:product_detail' product.id %}">Chi tiet</a>
+              <a class="btn btn-outline-success btn-sm" href="{% url 'shop:product_detail' product.id %}">Chi tiết</a>
               <form method="post" action="{% url 'shop:add_to_cart' product.id %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-sm">Them gio</button>
+                <button type="submit" class="btn btn-success btn-sm">Thêm giỏ</button>
               </form>
             </div>
           </div>
@@ -87,11 +87,11 @@
       </article>
     {% empty %}
       <div class="empty-state">
-        <h5>Khong tim thay san pham</h5>
+        <h5>Không tìm thấy sản phẩm</h5>
         {% if q or selected_category %}
-          <p class="mb-0">Thu doi tu khoa tim kiem hoac bo loc danh muc.</p>
+          <p class="mb-0">Thử đổi từ khóa tìm kiếm hoặc bộ lọc danh mục.</p>
         {% else %}
-          <p class="mb-0">Hien chua co san pham nao.</p>
+          <p class="mb-0">Hiện chưa có sản phẩm nào.</p>
         {% endif %}
       </div>
     {% endfor %}
@@ -101,45 +101,45 @@
 <section class="feature-grid mb-5">
   <div class="feature-card">
     <div class="feature-icon">1</div>
-    <h6>Mien phi van chuyen</h6>
-    <p>Ap dung don hang tu 500.000 VND.</p>
+    <h6>Miễn phí vận chuyển</h6>
+    <p>Áp dụng đơn hàng từ 500.000 VND.</p>
   </div>
   <div class="feature-card">
     <div class="feature-icon">2</div>
-    <h6>Ho tro 24/7</h6>
-    <p>Tu van vi tra va phan phoi nhanh.</p>
+    <h6>Hỗ trợ 24/7</h6>
+    <p>Tư vấn vị trà và phân phối nhanh.</p>
   </div>
   <div class="feature-card">
     <div class="feature-icon">3</div>
-    <h6>Hoan tien 100%</h6>
-    <p>Doi tra neu san pham khong dung mo ta.</p>
+    <h6>Hoàn tiền 100%</h6>
+    <p>Đổi trả nếu sản phẩm không đúng mô tả.</p>
   </div>
   <div class="feature-card">
     <div class="feature-icon">4</div>
-    <h6>Thanh toan an toan</h6>
-    <p>COD hoac chuyen khoan qua ngan hang.</p>
+    <h6>Thanh toán an toàn</h6>
+    <p>COD hoặc chuyển khoản qua ngân hàng.</p>
   </div>
 </section>
 
 <section class="guide-contact mb-5">
   <div class="guide-card">
-    <h4>Huong dan su dung</h4>
+    <h4>Hướng dẫn sử dụng</h4>
     <ul class="list-compact">
-      <li>Nuoc 85-90 do C, pha 3-5 phut.</li>
-      <li>Ty le 5g che / 200ml nuoc.</li>
-      <li>Co the pha 3-4 lan nuoc.</li>
+      <li>Nước 85-90 độ C, pha 3-5 phút.</li>
+      <li>Tỷ lệ 5g chè / 200ml nước.</li>
+      <li>Có thể pha 3-4 lần nước.</li>
     </ul>
-    <a class="btn btn-outline-success btn-sm" href="{% url 'shop:home' %}">Xem chi tiet</a>
+    <a class="btn btn-outline-success btn-sm" href="{% url 'shop:home' %}">Xem chi tiết</a>
   </div>
   <div class="guide-card">
-    <h4>Thong tin lien he</h4>
+    <h4>Thông tin liên hệ</h4>
     <ul class="list-compact">
-      <li>Van phong 1: 316 Phan Dinh Phung, Thai Nguyen.</li>
-      <li>Van phong 2: 79/1 Bac Kan, Thai Nguyen.</li>
+      <li>Văn phòng 1: 316 Phan Đình Phùng, Thái Nguyên.</li>
+      <li>Văn phòng 2: 79/1 Bắc Kạn, Thái Nguyên.</li>
       <li>Hotline: 0986.xxx.xxx</li>
-      <li>Email: support@chebup.vn</li>
+      <li>Email: support@chebuptn.vn</li>
     </ul>
-    <a class="btn btn-success btn-sm" href="{% url 'shop:chat' %}">Chat tu van</a>
+    <a class="btn btn-success btn-sm" href="{% url 'shop:chat' %}">Chat tư vấn</a>
   </div>
 </section>
 {% endblock %}

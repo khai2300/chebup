@@ -15,6 +15,26 @@ python manage.py runserver
 
 Mo trinh duyet: `http://127.0.0.1:8000`
 
+## QR public ngoai mang (mien phi voi Cloudflare Tunnel)
+
+1. Chay Django:
+
+```powershell
+python manage.py runserver 0.0.0.0:8000
+```
+
+2. Mo terminal khac va chay tunnel:
+
+```cmd
+cd /d %USERPROFILE%\Downloads
+cloudflared.exe tunnel --url http://127.0.0.1:8000
+```
+
+3. Mo trang admin bang link `https://xxxxx.trycloudflare.com`.
+   Khi mo tu domain tunnel, QR se tu dong tao link public theo tunnel (khong bi dính localhost/LAN).
+
+Luu y: link `trycloudflare.com` la tam thoi, moi lan chay lai tunnel se doi link.
+
 ## Tai khoan admin mac dinh
 
 - Username: `admin`
@@ -36,6 +56,8 @@ Neu chua co du lieu mau, trang chu se tu dong seed san pham khi truy cap lan dau
 ## URL chinh
 
 - `/` danh sach san pham
+- `/robots.txt`
+- `/sitemap.xml`
 - `/register/`, `/login/`, `/logout/`
 - `/cart/`, `/checkout/`
 - `/account/`, `/orders/`
@@ -80,6 +102,37 @@ python manage.py runserver
 - `OPENAI_CHAT_MODEL` (optional)
 - `OPENAI_CHAT_TIMEOUT` (optional, mac dinh `25`)
 - `OPENAI_CHAT_TEMPERATURE` (optional, mac dinh `0.6`)
+- `ORDER_NOTIFY_TO` (email nhan thong bao don hang, co the nhieu email cach nhau boi dau phay)
+- `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`
+- `SITE_URL` (nen dat domain that, vi du `https://yourdomain.com`)
+- `DEFAULT_META_DESCRIPTION` (optional)
+
+### Gmail SMTP cho thong bao don hang
+
+Vi du nhanh trong `.env`:
+
+```env
+ORDER_NOTIFY_TO=nhoc15527@gmail.com
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=nhoc15527@gmail.com
+EMAIL_HOST_PASSWORD=your_gmail_app_password
+DEFAULT_FROM_EMAIL=nhoc15527@gmail.com
+```
+
+Luu y: `EMAIL_HOST_PASSWORD` la **App Password** cua Gmail, khong phai mat khau dang nhap thuong.
+
+
+## SEO + Google
+
+- He thong da co `robots.txt` va `sitemap.xml` de Google crawl/index.
+- Dat `SITE_URL` trong `.env` dung domain that cua ban.
+- Sau khi deploy, vao Google Search Console:
+  - Verify domain.
+  - Submit `https://yourdomain.com/sitemap.xml`.
+  - Request indexing trang chu va trang san pham.
 
 ## Upload anh tu thu muc may tinh
 

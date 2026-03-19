@@ -1,40 +1,42 @@
 {% extends "shop/base.html" %}
-{% block title %}Truy xuat {{ product.name }}{% endblock %}
+{% block title %}Truy xuất {{ product.name }}{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <div>
-    <h3 class="mb-0">Truy xuat nguon san pham</h3>
+    <h3 class="mb-0">Truy xuất nguồn sản phẩm</h3>
     <small class="text-muted">{{ product.name }}</small>
   </div>
   <div class="d-flex align-items-center gap-2 flex-wrap">
-    <a href="{% url 'shop:product_trace_qr' product.id %}?download=1" class="btn btn-outline-success btn-sm">Tai QR truy xuat</a>
-    <a href="{% url 'shop:product_detail' product.id %}" class="btn btn-outline-secondary btn-sm">Ve chi tiet san pham</a>
+    {% if request.user.is_staff %}
+      <a href="{% url 'shop:product_trace_qr' product.id %}?download=1" class="btn btn-outline-success btn-sm">Tải QR truy xuất</a>
+    {% endif %}
+    <a href="{% url 'shop:product_detail' product.id %}" class="btn btn-outline-secondary btn-sm">Về chi tiết sản phẩm</a>
   </div>
 </div>
 
 <div class="row g-3 mb-3">
   <div class="col-md-4">
     <div class="card tea-card border-0 shadow-sm p-3 h-100">
-      <small class="text-muted">San pham</small>
+      <small class="text-muted">Sản phẩm</small>
       <strong>{{ product.name }}</strong>
-      <small class="text-muted mt-2">Danh muc</small>
+      <small class="text-muted mt-2">Danh mục</small>
       <strong>{{ product.category.name }}</strong>
-      <small class="text-muted mt-2">Gia</small>
+      <small class="text-muted mt-2">Giá</small>
       <strong>{{ product.price|floatformat:0 }} VND</strong>
       {% if zone %}
-        <small class="text-muted mt-2">Khu nguon</small>
+        <small class="text-muted mt-2">Khu nguồn</small>
         <strong>{{ zone.name }} ({{ zone.code }})</strong>
         <small class="text-muted">{{ zone.province }}</small>
       {% endif %}
       {% if product.map_link %}
-        <small class="text-muted mt-2">Link map ngoai</small>
-        <a href="{{ product.map_link }}" target="_blank" rel="noopener">Mo map tren Google Maps</a>
+        <small class="text-muted mt-2">Link map ngoài</small>
+        <a href="{{ product.map_link }}" target="_blank" rel="noopener">Mở map trên Google Maps</a>
       {% endif %}
     </div>
   </div>
   <div class="col-md-8">
     <div class="card tea-card border-0 shadow-sm p-3 h-100">
-      <h6 class="mb-2">Mo ta san pham</h6>
+      <h6 class="mb-2">Mô tả sản phẩm</h6>
       <p class="mb-0">{{ product.description }}</p>
     </div>
   </div>
@@ -43,7 +45,7 @@
 {% if product.map_link %}
   <div class="card tea-card border-0 shadow-sm mt-3">
     <div class="card-body">
-      <h5 class="mb-3">Ban do tu map link da gan</h5>
+      <h5 class="mb-3">Bản đồ từ map link đã gắn</h5>
       <div class="ratio ratio-16x9">
         <iframe
           src="{{ product.map_link }}"
@@ -58,7 +60,7 @@
 {% else %}
   <div class="card tea-card border-0 shadow-sm mt-3">
     <div class="card-body">
-      <p class="text-danger mb-0">San pham nay chua duoc gan map link.</p>
+      <p class="text-danger mb-0">Sản phẩm này chưa được gắn map link.</p>
     </div>
   </div>
 {% endif %}

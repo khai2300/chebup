@@ -1,10 +1,10 @@
 {% extends "shop/base.html" %}
-{% block title %}Tin tuc che Thai Nguyen{% endblock %}
+{% block title %}Tin tức chè Thái Nguyên{% endblock %}
 {% block content %}
 <section class="news-hero">
   <div class="news-hero-content">
-    <h3>Tin tuc che Thai Nguyen</h3>
-    <p>Tong hop bai viet ve che, cach pha va bi quyet thuong tra.</p>
+    <h3>Tin tức chè Thái Nguyên</h3>
+    <p>Tổng hợp bài viết về chè, cách pha và bí quyết thưởng trà.</p>
   </div>
 </section>
 
@@ -18,13 +18,13 @@
         <span class="news-date">{{ post.date }}</span>
         <h5 class="news-title">{{ post.title }}</h5>
         <p class="news-excerpt">{{ post.excerpt }}</p>
-        <a class="btn btn-outline-success btn-sm" href="{{ post.url }}">Xem bai viet</a>
+        <a class="btn btn-outline-success btn-sm" href="{{ post.url }}">Xem bài viết</a>
       </div>
     </article>
   {% empty %}
     <div class="empty-state">
-      <h5>Chua co bai viet</h5>
-      <p class="mb-0">Vui long them bai viet moi trong du lieu tin tuc.</p>
+      <h5>Chưa có bài viết</h5>
+      <p class="mb-0">Vui lòng thêm bài viết mới trong dữ liệu tin tức.</p>
     </div>
   {% endfor %}
 </section>

@@ -6,7 +6,7 @@
       {% elif product.image_url %}
         <img src="{{ product.image_url }}" alt="{{ product.name }}">
       {% else %}
-        <div class="product-placeholder">Chua co anh</div>
+        <div class="product-placeholder">Chưa có ảnh</div>
       {% endif %}
       <span class="product-badge">{{ product.category.name }}</span>
     </a>
@@ -15,17 +15,17 @@
       <p class="product-desc">{{ product.short_description|default:product.description|truncatechars:90 }}</p>
       <div class="product-meta">
         {% if product.source_zone %}
-          <span>Nguon: {{ product.source_zone.name }}</span>
+          <span>Nguồn: {{ product.source_zone.name }}</span>
         {% endif %}
         <span>Kho: {{ product.stock }}</span>
       </div>
       <div class="product-footer">
         <div class="product-price">{{ product.price|floatformat:0 }} VND</div>
         <div class="product-actions">
-          <a href="{% url 'shop:product_detail' product.id %}" class="btn btn-outline-success btn-sm">Chi tiet</a>
+          <a href="{% url 'shop:product_detail' product.id %}" class="btn btn-outline-success btn-sm">Chi tiết</a>
           <form method="post" action="{% url 'shop:add_to_cart' product.id %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-success btn-sm">Them gio</button>
+            <button type="submit" class="btn btn-success btn-sm">Thêm giỏ</button>
           </form>
         </div>
       </div>

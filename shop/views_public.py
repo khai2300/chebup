@@ -4,7 +4,7 @@ from io import BytesIO
 
 import qrcode
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
@@ -15,34 +15,34 @@ from .views_utils import build_public_url
 
 NEWS_POSTS = [
     {
-        "title": "Tra Non Tom Thai Nguyen - Tinh Hoa Tu Nhung Bup Che Non",
+        "title": "Trà Nõn Tôm Thái Nguyên - Tinh Hoa Từ Những Búp Chè Non",
         "excerpt": (
-            "Bai viet gioi thieu tra non tom tu bup che non hai sang som, "
-            "che bien ti mi de giu huong thanh va hau ngot. "
-            "Kem huong dan pha (nuoc ~80-85C, ngam 3-5 phut) "
-            "va loi ich suc khoe nhu chong oxy hoa, ho tro giam can, tang tap trung."
+            "Bài viết giới thiệu trà nõn tôm từ búp chè non hái sáng sớm, "
+            "chế biến tỉ mỉ để giữ hương thanh và hậu ngọt. "
+            "Kèm hướng dẫn pha (nước ~80-85C, ngâm 3-5 phút) "
+            "và lợi ích sức khỏe như chống oxy hóa, hỗ trợ giảm cân, tăng tập trung."
         ),
         "date": "2024-08",
         "image": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjP6kGyA9yGplciySGtmdwEVKtEnoQXWgzuhOADpzaUHokLoVE8hvla9otJMXpQIkTDOhJ2bBno1YWP6G2Rai1bJizsJ6wP4q5cSFRcym7GypFEHsMWdQqzE3lyPppv-AgOH9jMQ1wvYFEZk6UDOyP7iYnmDIHfQJQwMttynHRn09IzEuvoVeMdpieolbs/w640-h434/tra-non-tom-thai-nguyen.jpg",
         "url": "https://www.chebupthainguyen.com/2024/08/tra-non-tom-thai-nguyen-ngon.html",
     },
     {
-        "title": "Bi Quyet Chon Che Ngon Thai Nguyen",
+        "title": "Bí Quyết Chọn Chè Ngon Thái Nguyên",
         "excerpt": (
-            "Bai viet neu dau hieu che ngon (mau nuoc vang xanh trong, mui thom tu nhien, "
-            "vi chat diu ngot hau), quy trinh san xuat tu thu hai sang som den sao/len men/say kho. "
-            "Co goi y chon mua theo nguon goc, la che, mui, va huong dan pha 80-85C trong 3-5 phut."
+            "Bài viết nêu dấu hiệu chè ngon (màu nước vàng xanh trong, mùi thơm tự nhiên, "
+            "vị chát dịu ngọt hậu), quy trình sản xuất từ thu hái sáng sớm đến sao/lên men/sấy khô. "
+            "Có gợi ý chọn mua theo nguồn gốc, lá chè, mùi, và hướng dẫn pha 80-85C trong 3-5 phút."
         ),
         "date": "2024-08",
         "image": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi3M6ymxmRhmIRhnSli1qr2w8lu6dMKZVdpE_K068eCV6jv1xVZovET5Pv54d1At7BJ2nhGEyBKLKoGkApM9LkZJdD4tH2qagdBcDST73IXcDm_KRIJbUmC1GYy_nMNzpxGDix9er79Os8epKSI4O4rR8qD_XqU8yz4NkNYk0doYGg1wqmOZwYw39n9iK8/w640-h640/chethainguyen.jpg",
         "url": "https://www.chebupthainguyen.com/2024/08/bi-quyet-chon-che-ngon-thai-nguyen.html",
     },
     {
-        "title": "Tai Sao Tra Tan Cuong Thai Nguyen Noi Tieng",
+        "title": "Tại Sao Trà Tân Cương Thái Nguyên Nổi Tiếng",
         "excerpt": (
-            "Bai viet giai thich ly do tra Tan Cuong noi tieng: dieu kien tu nhien vung tra, "
-            "che bien thu cong, huong vi dac trung va loi ich suc khoe "
-            "(ho tro tim mach, tieu hoa, tang mien dich, giam cang thang)."
+            "Bài viết giải thích lý do trà Tân Cương nổi tiếng: điều kiện tự nhiên vùng trà, "
+            "chế biến thủ công, hương vị đặc trưng và lợi ích sức khỏe "
+            "(hỗ trợ tim mạch, tiêu hóa, tăng miễn dịch, giảm căng thẳng)."
         ),
         "date": "2024-08",
         "image": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjYxul3CcmnPWvKr3pYVxS07_O8MJnYBBOQELONPctB9boJirwtjX4mHzrUboUwY9JNXP91KpQrtL18ZJJUwpEV2H-Iefl9xCMLtt03tKIedPf1wQJM1xw_WO60apWqskHa06DqHGC_hmyBSKs3fW8c0IYxr8DjnlyEIQDbzaFBkemVRnH6jDlYI6zbnF8/w640-h640/Tr%C3%A0%20T%C3%A2n%20c%C6%B0%C6%A1ng%20th%C3%A1i%20nguy%C3%AAn.jpg",
@@ -128,6 +128,10 @@ def product_detail(request, product_id):
 @require_GET
 def product_trace_qr(request, product_id):
     product = get_object_or_404(Product, id=product_id)
+    download_requested = request.GET.get("download", "").strip().lower() in {"1", "true", "yes"}
+    if download_requested and not request.user.is_staff:
+        return HttpResponseForbidden()
+
     trace_path = reverse("shop:trace_product", kwargs={"product_id": product.id})
     trace_url = build_public_url(request, trace_path)
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
@@ -137,8 +141,11 @@ def product_trace_qr(request, product_id):
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     response = HttpResponse(buffer.getvalue(), content_type="image/png")
-    if request.GET.get("download", "").strip().lower() in {"1", "true", "yes"}:
+    if download_requested:
         response["Content-Disposition"] = f'attachment; filename="trace-product-{product.id}.png"'
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
     return response
 
 
@@ -171,3 +178,18 @@ def trace_product(request, product_id):
 @require_GET
 def news_list(request):
     return render(request, "shop/news.html", {"posts": NEWS_POSTS})
+
+
+@require_GET
+def robots_txt(request):
+    sitemap_url = build_public_url(request, reverse("shop:sitemap"))
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin/",
+        "Disallow: /dashboard/admin/",
+        "Disallow: /chat/api/",
+        "Disallow: /chat/reset/",
+        f"Sitemap: {sitemap_url}",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain; charset=utf-8")

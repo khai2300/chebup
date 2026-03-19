@@ -21,21 +21,21 @@ def register_view(request):
         password2 = request.POST.get("password2", "")
 
         if not all([full_name, phone, email, username, password1, password2]):
-            messages.error(request, "Vui long nhap day du thong tin.")
+            messages.error(request, "Vui lòng nhập đầy đủ thông tin.")
             return redirect("shop:register")
         if password1 != password2:
-            messages.error(request, "Mat khau xac nhan khong khop.")
+            messages.error(request, "Mật khẩu xác nhận không khớp.")
             return redirect("shop:register")
         if User.objects.filter(username=username).exists():
-            messages.error(request, "Username da ton tai.")
+            messages.error(request, "Username đã tồn tại.")
             return redirect("shop:register")
         if User.objects.filter(email=email).exists():
-            messages.error(request, "Email da ton tai.")
+            messages.error(request, "Email đã tồn tại.")
             return redirect("shop:register")
 
         user = User.objects.create_user(username=username, email=email, password=password1)
         UserProfile.objects.create(user=user, full_name=full_name, phone=phone)
-        messages.success(request, "Dang ky thanh cong. Ban co the dang nhap ngay.")
+        messages.success(request, "Đăng ký thành công. Bạn có thể đăng nhập ngay.")
         return redirect("shop:login")
 
     return render(request, "shop/auth/register.html")
@@ -55,13 +55,13 @@ def login_view(request):
 
         user = authenticate(request, username=auth_username, password=password)
         if user is None:
-            messages.error(request, "Thong tin dang nhap khong dung.")
+            messages.error(request, "Thông tin đăng nhập không đúng.")
             return redirect("shop:login")
         if not user.is_active:
-            messages.error(request, "Tai khoan da bi khoa.")
+            messages.error(request, "Tài khoản đã bị khóa.")
             return redirect("shop:login")
         login(request, user)
-        messages.success(request, "Dang nhap thanh cong.")
+        messages.success(request, "Đăng nhập thành công.")
         return redirect("shop:home")
 
     return render(request, "shop/auth/login.html")
@@ -70,5 +70,5 @@ def login_view(request):
 @login_required
 def logout_view(request):
     logout(request)
-    messages.info(request, "Ban da dang xuat.")
+    messages.info(request, "Bạn đã đăng xuất.")
     return redirect("shop:login")

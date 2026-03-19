@@ -17,12 +17,17 @@ from .views_utils import get_or_create_order_trace_token
 User = get_user_model()
 
 IFRAME_SRC_RE = re.compile(r"""src=(["'])(?P<src>.+?)\1""", re.IGNORECASE)
-REVENUE_STATUSES = [Order.STATUS_PROCESSING, Order.STATUS_SHIPPED, Order.STATUS_DELIVERED]
+REVENUE_STATUSES = [
+    Order.STATUS_PENDING,
+    Order.STATUS_PROCESSING,
+    Order.STATUS_SHIPPED,
+    Order.STATUS_DELIVERED,
+]
 DASHBOARD_PERIODS = {
-    "7d": {"label": "7 ngay gan nhat", "days": 7, "bucket": "day"},
-    "30d": {"label": "30 ngay gan nhat", "days": 30, "bucket": "day"},
-    "90d": {"label": "90 ngay gan nhat", "days": 90, "bucket": "week"},
-    "12m": {"label": "12 thang gan nhat", "days": 365, "bucket": "month"},
+    "7d": {"label": "7 ngày gần nhất", "days": 7, "bucket": "day"},
+    "30d": {"label": "30 ngày gần nhất", "days": 30, "bucket": "day"},
+    "90d": {"label": "90 ngày gần nhất", "days": 90, "bucket": "week"},
+    "12m": {"label": "12 tháng gần nhất", "days": 365, "bucket": "month"},
 }
 PRODUCT_FIELDS = (
     "name",
@@ -84,16 +89,16 @@ def _parse_product_payload(request, prefix=""):
         price = Decimal(request.POST.get(f"{prefix}price", "0").strip() or "0")
         stock = int(request.POST.get(f"{prefix}stock", "0").strip() or "0")
     except Exception:
-        return None, "Gia hoac ton kho khong hop le."
+        return None, "Giá hoặc tồn kho không hợp lệ."
 
     category = Category.objects.filter(id=category_id).first()
     zone = ProductionZone.objects.filter(id=source_zone_id).first() if source_zone_id else None
     if not category or not name:
-        return None, "Can nhap ten san pham va danh muc."
+        return None, "Cần nhập tên sản phẩm và danh mục."
 
     payload = {
         "name": name,
-        "description": description or short_description or "Dang cap nhat mo ta.",
+        "description": description or short_description or "Đang cập nhật mô tả.",
         "short_description": short_description,
         "category": category,
         "source_zone": zone,
@@ -127,7 +132,7 @@ def _apply_product_payload(product, payload):
 def _normalize_dashboard_period(raw_period):
     period_key = (raw_period or "").strip().lower()
     if period_key not in DASHBOARD_PERIODS:
-        period_key = "30d"
+        period_key = "7d"
     return period_key, DASHBOARD_PERIODS[period_key]
 
 
@@ -137,12 +142,12 @@ def _build_change_info(current_value, previous_value):
             return {
                 "direction": "flat",
                 "display": "0%",
-                "note": "Khong doi so voi ky truoc",
+                "note": "Không đổi so với kỳ trước",
             }
         return {
             "direction": "up",
             "display": "Moi",
-            "note": "Ky truoc chua co du lieu",
+            "note": "Kỳ trước chưa có dữ liệu",
         }
 
     delta = current_value - previous_value
@@ -156,7 +161,7 @@ def _build_change_info(current_value, previous_value):
     return {
         "direction": direction,
         "display": f"{pct:+.1f}%",
-        "note": "So voi ky truoc",
+        "note": "So với kỳ trước",
     }
 
 
@@ -166,7 +171,7 @@ def _format_dashboard_bucket_label(bucket_value, bucket_type):
         return value.strftime("%d/%m")
     if bucket_type == "week":
         iso_year, iso_week, _ = value.isocalendar()
-        return f"Tuan {iso_week:02d}/{iso_year}"
+        return f"Tuần {iso_week:02d}/{iso_year}"
     return value.strftime("%m/%Y")
 
 
@@ -187,19 +192,32 @@ def admin_dashboard(request):
     revenue_orders = Order.objects.filter(status__in=REVENUE_STATUSES)
     period_orders = revenue_orders.filter(created_at__date__range=(start_date, today))
     previous_orders = revenue_orders.filter(created_at__date__range=(previous_start, previous_end))
+    period_order_items = OrderItem.objects.filter(
+        order__status__in=REVENUE_STATUSES,
+        order__created_at__date__range=(start_date, today),
+    )
+    previous_order_items = OrderItem.objects.filter(
+        order__status__in=REVENUE_STATUSES,
+        order__created_at__date__range=(previous_start, previous_end),
+    )
 
     period_revenue = period_orders.aggregate(value=Sum("final_amount")).get("value") or Decimal("0")
     previous_revenue = previous_orders.aggregate(value=Sum("final_amount")).get("value") or Decimal("0")
     period_order_count = period_orders.count()
     previous_order_count = previous_orders.count()
+    period_quantity_sold = period_order_items.aggregate(value=Sum("quantity")).get("value") or 0
+    previous_quantity_sold = previous_order_items.aggregate(value=Sum("quantity")).get("value") or 0
     average_order_value = period_revenue / period_order_count if period_order_count else Decimal("0")
 
     if bucket_type == "day":
         bucket_expr = TruncDate("created_at")
+        item_bucket_expr = TruncDate("order__created_at")
     elif bucket_type == "week":
         bucket_expr = TruncWeek("created_at")
+        item_bucket_expr = TruncWeek("order__created_at")
     else:
         bucket_expr = TruncMonth("created_at")
+        item_bucket_expr = TruncMonth("order__created_at")
 
     trend_rows = list(
         period_orders.annotate(bucket=bucket_expr)
@@ -207,49 +225,70 @@ def admin_dashboard(request):
         .annotate(revenue=Sum("final_amount"), order_count=Count("id"))
         .order_by("bucket")
     )
+    trend_quantity_rows = list(
+        period_order_items.annotate(bucket=item_bucket_expr)
+        .values("bucket")
+        .annotate(quantity_sold=Sum("quantity"))
+        .order_by("bucket")
+    )
+    quantity_by_bucket = {}
+    for row in trend_quantity_rows:
+        bucket_key = row["bucket"].date() if hasattr(row["bucket"], "date") else row["bucket"]
+        quantity_by_bucket[bucket_key] = row["quantity_sold"] or 0
+
     max_revenue = max((row["revenue"] or Decimal("0") for row in trend_rows), default=Decimal("0"))
     trend_series = []
     for row in trend_rows:
+        bucket_key = row["bucket"].date() if hasattr(row["bucket"], "date") else row["bucket"]
         revenue_value = row["revenue"] or Decimal("0")
         trend_series.append(
             {
                 "label": _format_dashboard_bucket_label(row["bucket"], bucket_type),
                 "revenue": revenue_value,
                 "order_count": row["order_count"] or 0,
+                "quantity_sold": quantity_by_bucket.get(bucket_key, 0),
                 "revenue_pct": int((revenue_value / max_revenue) * 100) if max_revenue else 0,
             }
         )
 
     top_products = list(
-        OrderItem.objects.filter(
-            order__status__in=REVENUE_STATUSES,
-            order__created_at__date__range=(start_date, today),
-        )
-        .values("product_name")
+        period_order_items.values("product_name")
         .annotate(quantity_sold=Sum("quantity"), revenue=Sum("subtotal"))
         .order_by("-quantity_sold", "-revenue")[:5]
+    )
+    low_products = list(
+        period_order_items.values("product_name")
+        .annotate(quantity_sold=Sum("quantity"), revenue=Sum("subtotal"))
+        .order_by("quantity_sold", "revenue", "product_name")[:5]
     )
 
     trend_insights = []
     revenue_change = _build_change_info(period_revenue, previous_revenue)
     order_change = _build_change_info(Decimal(period_order_count), Decimal(previous_order_count))
+    quantity_change = _build_change_info(Decimal(period_quantity_sold), Decimal(previous_quantity_sold))
     if period_order_count == 0:
-        trend_insights.append("Chua co don hang hop le trong ky da chon.")
+        trend_insights.append("Chưa có đơn hàng hợp lệ trong kỳ đã chọn.")
     elif revenue_change["direction"] == "up":
-        trend_insights.append(f"Doanh thu dang tang ({revenue_change['display']}) {revenue_change['note'].lower()}.")
+        trend_insights.append(f"Doanh thu đang tăng ({revenue_change['display']}) {revenue_change['note'].lower()}.")
     elif revenue_change["direction"] == "down":
-        trend_insights.append(f"Doanh thu dang giam ({revenue_change['display']}) {revenue_change['note'].lower()}.")
+        trend_insights.append(f"Doanh thu đang giảm ({revenue_change['display']}) {revenue_change['note'].lower()}.")
     else:
-        trend_insights.append("Doanh thu dang on dinh, chua thay doi ro net.")
+        trend_insights.append("Doanh thu đang ổn định, chưa thay đổi rõ nét.")
 
     if top_products:
         lead_product = top_products[0]
         trend_insights.append(
-            f"San pham dan dau: {lead_product['product_name']} ({lead_product['quantity_sold']} san pham)."
+            f"Sản phẩm dẫn đầu: {lead_product['product_name']} ({lead_product['quantity_sold']} sản phẩm)."
         )
     if trend_series:
         peak = max(trend_series, key=lambda row: row["revenue"])
-        trend_insights.append(f"Giai doan cao diem: {peak['label']} dat {peak['revenue']:.0f} VND.")
+        trend_insights.append(f"Giai đoạn cao điểm: {peak['label']} đạt {peak['revenue']:.0f} VND.")
+
+    if low_products:
+        slowest_product = low_products[0]
+        trend_insights.append(
+            f"Sản phẩm tiêu thụ ít nhất: {slowest_product['product_name']} ({slowest_product['quantity_sold']} sản phẩm)."
+        )
 
     stats = {
         "total_users": User.objects.count(),
@@ -278,14 +317,17 @@ def admin_dashboard(request):
             "period_end": today,
             "period_revenue": period_revenue,
             "period_order_count": period_order_count,
+            "period_quantity_sold": period_quantity_sold,
             "average_order_value": average_order_value,
             "revenue_change": revenue_change,
             "order_change": order_change,
+            "quantity_change": quantity_change,
             "trend_series": trend_series,
             "trend_insights": trend_insights,
             "top_products": top_products,
+            "low_products": low_products,
             "can_manage_users": can_manage_users,
-            "staff_role_label": "Quan ly admin" if can_manage_users else "Nhan vien",
+            "staff_role_label": "Quản lý admin" if can_manage_users else "Nhân viên",
         },
     )
 
@@ -294,6 +336,8 @@ def admin_dashboard(request):
 def admin_products(request):
     if request.method == "POST":
         action = request.POST.get("action", "").strip()
+        if not action and request.POST.getlist("product_ids"):
+            action = "bulk_update"
 
         if action == "create":
             payload, error = _parse_product_payload(request)
@@ -304,39 +348,39 @@ def admin_products(request):
             product = Product(**{field: payload[field] for field in PRODUCT_FIELDS})
             _apply_product_images(product, payload)
             product.save()
-            messages.success(request, f"Da tao san pham #{product.id}.")
+            messages.success(request, f"Đã tạo sản phẩm #{product.id}.")
             return redirect("shop:admin_products")
 
         if action.startswith("delete:"):
             product_id = action.split(":", 1)[1].strip()
             product = Product.objects.filter(id=product_id).first()
             if not product:
-                messages.error(request, "Khong tim thay san pham.")
+                messages.error(request, "Không tìm thấy sản phẩm.")
                 return redirect("shop:admin_products")
             product_name = product.name
             product.delete()
-            messages.success(request, f"Da xoa san pham: {product_name}.")
+            messages.success(request, f"Đã xóa sản phẩm: {product_name}.")
             return redirect("shop:admin_products")
 
         if action == "bulk_delete_selected":
             selected_ids = _collect_numeric_ids(request.POST.getlist("selected_product_ids"))
             if not selected_ids:
-                messages.warning(request, "Ban chua chon san pham nao de xoa.")
+                messages.warning(request, "Bạn chưa chọn sản phẩm nào để xóa.")
                 return redirect("shop:admin_products")
 
             selected_qs = Product.objects.filter(id__in=selected_ids)
             selected_count = selected_qs.count()
             selected_qs.delete()
             if selected_count:
-                messages.success(request, f"Da xoa {selected_count} san pham da chon.")
+                messages.success(request, f"Đã xóa {selected_count} sản phẩm đã chọn.")
             else:
-                messages.warning(request, "Khong co san pham hop le de xoa.")
+                messages.warning(request, "Không có sản phẩm hợp lệ để xóa.")
             return redirect("shop:admin_products")
 
         if action == "bulk_update":
             product_ids = _collect_numeric_ids(request.POST.getlist("product_ids"))
             if not product_ids:
-                messages.error(request, "Khong co san pham nao de cap nhat.")
+                messages.error(request, "Không có sản phẩm nào để cập nhật.")
                 return redirect("shop:admin_products")
 
             products = {product.id: product for product in Product.objects.filter(id__in=product_ids)}
@@ -360,23 +404,23 @@ def admin_products(request):
                 updated_count += 1
 
             if updated_count:
-                messages.success(request, f"Da cap nhat dong loat {updated_count} san pham.")
+                messages.success(request, f"Đã cập nhật đồng loạt {updated_count} sản phẩm.")
             if failed_rows:
                 preview = ", ".join(f"#{row_id}" for row_id in failed_rows[:8])
                 suffix = "..." if len(failed_rows) > 8 else ""
                 messages.warning(
                     request,
-                    f"Mot so dong khong hop le, bo qua: {preview}{suffix}.",
+                    f"Một số dòng không hợp lệ, bỏ qua: {preview}{suffix}.",
                 )
             if not updated_count and not failed_rows:
-                messages.info(request, "Khong co thay doi nao duoc ap dung.")
+                messages.info(request, "Không có thay đổi nào được áp dụng.")
             return redirect("shop:admin_products")
 
         if action == "update":
             product_id = request.POST.get("product_id", "").strip()
             product = Product.objects.filter(id=product_id).first()
             if not product:
-                messages.error(request, "Khong tim thay san pham.")
+                messages.error(request, "Không tìm thấy sản phẩm.")
                 return redirect("shop:admin_products")
 
             payload, error = _parse_product_payload(request)
@@ -386,21 +430,21 @@ def admin_products(request):
 
             _apply_product_payload(product, payload)
             product.save()
-            messages.success(request, f"Da cap nhat san pham #{product.id}.")
+            messages.success(request, f"Đã cập nhật sản phẩm #{product.id}.")
             return redirect("shop:admin_products")
 
         if action == "delete":
             product_id = request.POST.get("product_id", "").strip()
             product = Product.objects.filter(id=product_id).first()
             if not product:
-                messages.error(request, "Khong tim thay san pham.")
+                messages.error(request, "Không tìm thấy sản phẩm.")
                 return redirect("shop:admin_products")
             product_name = product.name
             product.delete()
-            messages.success(request, f"Da xoa san pham: {product_name}.")
+            messages.success(request, f"Đã xóa sản phẩm: {product_name}.")
             return redirect("shop:admin_products")
 
-        messages.error(request, "Hanh dong khong hop le.")
+        messages.error(request, "Hành động không hợp lệ.")
         return redirect("shop:admin_products")
 
     products = Product.objects.select_related("category", "source_zone").all()

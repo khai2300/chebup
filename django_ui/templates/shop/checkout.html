@@ -1,9 +1,9 @@
 {% extends "shop/base.html" %}
-{% block title %}Thanh toan{% endblock %}
+{% block title %}Thanh toán{% endblock %}
 {% block content %}
 <div class="checkout-title">
-  <h3>Thanh toan</h3>
-  <p>Hoan tat thong tin giao hang va chon phuong thuc thanh toan.</p>
+  <h3>Thanh toán</h3>
+  <p>Hoàn tất thông tin giao hàng và chọn phương thức thanh toán.</p>
 </div>
 
 <form method="post" class="checkout-layout">
@@ -11,8 +11,8 @@
   <div class="checkout-main">
     <div class="checkout-card">
       <div class="checkout-card-head">
-        <h5>Dia chi giao hang</h5>
-        <a href="{% url 'shop:account' %}">Quan ly dia chi</a>
+        <h5>Địa chỉ giao hàng</h5>
+        <a href="{% url 'shop:account' %}">Quản lý địa chỉ</a>
       </div>
       <div class="checkout-card-body">
         {% for address in addresses %}
@@ -24,15 +24,15 @@
             </div>
           </label>
         {% empty %}
-          <p class="mb-0 text-danger">Ban chua co dia chi. Vui long them dia chi truoc khi dat hang.</p>
+          <p class="mb-0 text-danger">Bạn chưa có địa chỉ. Vui lòng thêm địa chỉ trước khi đặt hàng.</p>
         {% endfor %}
       </div>
     </div>
 
     <div class="checkout-card">
       <div class="checkout-card-head">
-        <h5>Phuong thuc thanh toan</h5>
-        <span class="small text-muted">Chon 1 trong 2 hinh thuc duoc ho tro.</span>
+        <h5>Phương thức thanh toán</h5>
+        <span class="small text-muted">Chọn 1 trong 2 hình thức được hỗ trợ.</span>
       </div>
       <div class="checkout-card-body">
         {% for method in payment_methods %}
@@ -53,30 +53,30 @@
         >
           <div class="checkout-qr-head">
             <div>
-              <h6>Thanh toan bang ma QR</h6>
-              <p class="mb-0">Nhap thong tin va quet ma de thanh toan nhanh.</p>
+              <h6>Thanh toán bằng mã QR</h6>
+              <p class="mb-0">Nhập thông tin và quét mã để thanh toán nhanh.</p>
             </div>
           </div>
           <div class="checkout-qr-body">
             <div class="checkout-qr-form">
-              <label class="form-label">Ho va ten nguoi chuyen</label>
-              <input class="form-control" name="bank_transfer_name" placeholder="Vi du: Nguyen Van A">
+              <label class="form-label">Họ và tên người chuyển</label>
+              <input class="form-control" name="bank_transfer_name" placeholder="Ví dụ: Nguyễn Văn A">
 
-              <label class="form-label">So dien thoai</label>
+              <label class="form-label">Số điện thoại</label>
               <input class="form-control" name="bank_transfer_phone" placeholder="Vi du: 0909xxx">
 
-              <label class="form-label">Noi dung chuyen khoan</label>
+              <label class="form-label">Nội dung chuyển khoản</label>
               <input class="form-control" name="bank_transfer_note" value="{{ bank_transfer.transfer_note }}">
 
               <div class="checkout-bank-info">
-                <div><strong>Ngan hang:</strong> {{ bank_transfer.bank_name }}</div>
-                <div><strong>Chu tai khoan:</strong> {{ bank_transfer.account_name }}</div>
-                <div><strong>So tai khoan:</strong> {{ bank_transfer.account_number }}</div>
+                <div><strong>Ngân hàng:</strong> {{ bank_transfer.bank_name }}</div>
+                <div><strong>Chủ tài khoản:</strong> {{ bank_transfer.account_name }}</div>
+                <div><strong>Số tài khoản:</strong> {{ bank_transfer.account_number }}</div>
               </div>
             </div>
             <div class="checkout-qr-preview">
-              <img src="{{ bank_transfer.qr_url }}" alt="QR thanh toan ngan hang">
-              <span>Quet ma QR de thanh toan</span>
+              <img src="{{ bank_transfer.qr_url }}" alt="QR thanh toán ngân hàng">
+              <span>Quét mã QR để thanh toán</span>
             </div>
           </div>
         </div>
@@ -87,7 +87,7 @@
   <aside class="checkout-summary">
     <div class="checkout-card">
       <div class="checkout-card-head">
-        <h5>Tom tat don</h5>
+        <h5>Tóm tắt đơn</h5>
       </div>
       <div class="checkout-card-body">
         {% for item in cart_items %}
@@ -97,21 +97,21 @@
           </div>
         {% endfor %}
         <hr>
-        <label class="form-label">Ma giam gia</label>
-        <input name="promo_code" value="{{ promo_code }}" class="form-control mb-3" placeholder="Nhap ma khuyen mai">
+        <label class="form-label">Mã giảm giá</label>
+        <input name="promo_code" value="{{ promo_code }}" class="form-control mb-3" placeholder="Nhập mã khuyến mãi">
         <div class="d-flex justify-content-between mb-2">
-          <span>Tam tinh</span>
+          <span>Tạm tính</span>
           <span>{{ summary.subtotal|floatformat:0 }} VND</span>
         </div>
         <div class="d-flex justify-content-between mb-3">
-          <span>Giam gia</span>
+          <span>Giảm giá</span>
           <span>- {{ summary.discount|floatformat:0 }} VND</span>
         </div>
         <div class="d-flex justify-content-between fw-semibold border-top pt-2 mb-3">
-          <span>Tong thanh toan</span>
+          <span>Tổng thanh toán</span>
           <span class="tea-price">{{ summary.total|floatformat:0 }} VND</span>
         </div>
-        <button class="btn btn-success w-100">Xac nhan dat hang</button>
+        <button class="btn btn-success w-100">Xác nhận đặt hàng</button>
       </div>
     </div>
   </aside>

@@ -1,8 +1,10 @@
 import json
+import logging
 from urllib.parse import urlencode
 from io import BytesIO
 
 import qrcode
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -12,6 +14,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Address, CartItem, Order, OrderItem, OrderTraceToken
+from .services.notifications import send_order_notification_email
 from .views_utils import (
     PAYMENT_METHOD_COD,
     PAYMENT_METHOD_BANK_TRANSFER,
@@ -23,12 +26,14 @@ from .views_utils import (
     get_or_create_order_trace_token,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def checkout(request):
     addresses = Address.objects.filter(user=request.user)
     if not addresses.exists():
-        messages.error(request, "Ban can them dia chi truoc khi dat hang.")
+        messages.error(request, "Báº¡n cáº§n thÃªm Ä‘á»‹a chá»‰ trÆ°á»›c khi Ä‘áº·t hÃ ng.")
         return redirect("shop:account")
 
     promo_code = request.POST.get("promo_code", request.GET.get("promo_code", "")).strip().upper()
@@ -40,7 +45,7 @@ def checkout(request):
     if selected_payment_method not in PAYMENT_METHOD_VALUES:
         selected_payment_method = PAYMENT_METHOD_COD
     if not cart_items:
-        messages.warning(request, "Gio hang dang trong.")
+        messages.warning(request, "Giá» hÃ ng Ä‘ang trá»‘ng.")
         return redirect("shop:home")
 
     if request.method == "POST":
@@ -51,15 +56,15 @@ def checkout(request):
 
         address = Address.objects.filter(user=request.user, id=address_id).first()
         if address is None:
-            messages.error(request, "Dia chi giao hang khong hop le.")
+            messages.error(request, "Äá»‹a chá»‰ giao hÃ ng khÃ´ng há»£p lá»‡.")
             return redirect("shop:checkout")
         if payment_method not in PAYMENT_METHOD_VALUES:
-            messages.error(request, "Phuong thuc thanh toan khong hop le.")
+            messages.error(request, "PhÆ°Æ¡ng thá»©c thanh toÃ¡n khÃ´ng há»£p lá»‡.")
             return redirect("shop:checkout")
         if payment_method == PAYMENT_METHOD_BANK_TRANSFER and (
             not bank_transfer_name or not bank_transfer_phone
         ):
-            messages.error(request, "Vui long nhap day du thong tin.")
+            messages.error(request, "Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin.")
             query = {"payment_method": payment_method}
             if promo_code:
                 query["promo_code"] = promo_code
@@ -67,7 +72,7 @@ def checkout(request):
 
         for item in cart_items:
             if item.quantity > item.product.stock:
-                messages.error(request, f"San pham {item.product.name} khong du ton kho.")
+                messages.error(request, f"Sáº£n pháº©m {item.product.name} khÃ´ng Ä‘á»§ tá»“n kho.")
                 return redirect("shop:cart")
 
         with transaction.atomic():
@@ -103,7 +108,40 @@ def checkout(request):
 
             CartItem.objects.filter(user=request.user).delete()
 
-        messages.success(request, f"Dat hang thanh cong. Ma don #{order.id}")
+        email_sent = False
+        email_reason = "send_failed"
+        try:
+            order_for_email = (
+                Order.objects.select_related("user", "address").prefetch_related("items").get(id=order.id)
+            )
+            email_sent, email_reason = send_order_notification_email(order_for_email)
+        except Exception as exc:
+            email_sent = False
+            email_reason = "send_failed"
+            logger.exception("Failed to send order email for order_id=%s", order.id)
+            if getattr(settings, "DEBUG", False):
+                messages.warning(
+                    request,
+                    f"Gui email that bai: {exc}",
+                )
+        if not email_sent:
+            if email_reason == "smtp_not_configured":
+                messages.info(
+                    request,
+                    "Đơn hàng đã tạo. Chưa gửi được email vì thiếu cấu hình Gmail App Password (EMAIL_HOST_PASSWORD).",
+                )
+            elif email_reason == "no_recipients":
+                messages.info(
+                    request,
+                    "Đơn hàng đã tạo. Chưa gửi email vì chưa có người nhận (ORDER_NOTIFY_TO hoặc email tài khoản).",
+                )
+            else:
+                messages.warning(
+                    request,
+                    "Đơn hàng đã tạo thành công, nhưng gửi email thất bại. Bạn hãy kiểm tra cấu hình Gmail SMTP.",
+                )
+
+        messages.success(request, f"Đặt hàng thành công. Mã đơn #{order.id}")
         success_url = reverse("shop:checkout_success")
         return redirect(f"{success_url}?order_id={order.id}")
 
@@ -137,7 +175,7 @@ def orders(request):
 def cancel_order(request, order_id):
     order = get_object_or_404(Order.objects.prefetch_related("items"), id=order_id, user=request.user)
     if order.status != Order.STATUS_PENDING:
-        messages.error(request, "Chi co the huy don dang Pending.")
+        messages.error(request, "Chá»‰ cÃ³ thá»ƒ há»§y Ä‘Æ¡n Ä‘ang Pending.")
         return redirect("shop:orders")
 
     with transaction.atomic():
@@ -148,7 +186,7 @@ def cancel_order(request, order_id):
                 item.product.stock += item.quantity
                 item.product.save(update_fields=["stock"])
 
-    messages.success(request, "Da huy don hang.")
+    messages.success(request, "ÄÃ£ há»§y Ä‘Æ¡n hÃ ng.")
     return redirect("shop:orders")
 
 
@@ -196,6 +234,9 @@ def order_trace_qr(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     if not request.user.is_staff and order.user_id != request.user.id:
         return HttpResponse(status=403)
+    download_requested = request.GET.get("download", "").strip().lower() in {"1", "true", "yes"}
+    if download_requested and not request.user.is_staff:
+        return HttpResponse(status=403)
 
     trace_url = build_order_trace_url(request, order)
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
@@ -205,7 +246,13 @@ def order_trace_qr(request, order_id):
 
     buffer = BytesIO()
     image.save(buffer, format="PNG")
-    return HttpResponse(buffer.getvalue(), content_type="image/png")
+    response = HttpResponse(buffer.getvalue(), content_type="image/png")
+    if download_requested:
+        response["Content-Disposition"] = f'attachment; filename="trace-order-{order.id}.png"'
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
 
 
 @require_GET

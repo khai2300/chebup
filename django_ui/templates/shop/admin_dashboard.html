@@ -3,18 +3,18 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
   <div>
-    <h3 class="mb-1">Dashboard doanh thu va xu huong ban hang</h3>
+    <h3 class="mb-1">Dashboard doanh thu và xu hướng bán hàng</h3>
     <p class="text-muted mb-0">
-      Vai tro:
+      Vai trò:
       <span class="badge text-bg-success">{{ staff_role_label }}</span>
     </p>
   </div>
   <div class="d-flex gap-2 flex-wrap">
-    <a href="{% url 'shop:admin_products' %}" class="btn btn-outline-success btn-sm">San pham</a>
-    <a href="{% url 'shop:admin_orders' %}" class="btn btn-outline-success btn-sm">Don hang</a>
+    <a href="{% url 'shop:admin_products' %}" class="btn btn-outline-success btn-sm">Sản phẩm</a>
+    <a href="{% url 'shop:admin_orders' %}" class="btn btn-outline-success btn-sm">Đơn hàng</a>
     {% if can_manage_users %}
-      <a href="{% url 'shop:admin_users' %}" class="btn btn-outline-success btn-sm">Nguoi dung</a>
-      <a href="{% url 'shop:admin_promotions' %}" class="btn btn-outline-success btn-sm">Khuyen mai</a>
+      <a href="{% url 'shop:admin_users' %}" class="btn btn-outline-success btn-sm">Người dùng</a>
+      <a href="{% url 'shop:admin_promotions' %}" class="btn btn-outline-success btn-sm">Khuyến mãi</a>
     {% endif %}
   </div>
 </div>
@@ -23,7 +23,7 @@
   <div class="card-body">
     <form method="get" class="row g-2 align-items-end">
       <div class="col-sm-7 col-md-4">
-        <label class="form-label mb-1">Thong ke theo thoi gian</label>
+        <label class="form-label mb-1">Thống kê theo thời gian</label>
         <select class="form-select" name="period">
           {% for option in period_options %}
             <option value="{{ option.value }}"{% if option.value == selected_period %} selected{% endif %}>{{ option.label }}</option>
@@ -31,11 +31,11 @@
         </select>
       </div>
       <div class="col-auto">
-        <button class="btn btn-success">Xem bao cao</button>
+        <button class="btn btn-success">Xem báo cáo</button>
       </div>
       <div class="col">
         <small class="text-muted d-block pt-2">
-          Du lieu ky nay: {{ period_start|date:"d/m/Y" }} - {{ period_end|date:"d/m/Y" }}
+          Dữ liệu kỳ này: {{ period_start|date:"d/m/Y" }} - {{ period_end|date:"d/m/Y" }}
         </small>
       </div>
     </form>
@@ -43,7 +43,7 @@
 </div>
 
 <div class="row g-3 mb-3">
-  <div class="col-md-3">
+  <div class="col-md-6 col-xl">
     <div class="card tea-card border-0 shadow-sm p-3 h-100">
       <small>Doanh thu ({{ period_label }})</small>
       <h4 class="mb-2">{{ period_revenue|floatformat:0 }} VND</h4>
@@ -53,9 +53,9 @@
       <small class="text-muted mt-2">{{ revenue_change.note }}</small>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-md-6 col-xl">
     <div class="card tea-card border-0 shadow-sm p-3 h-100">
-      <small>Don hang hop le ({{ period_label }})</small>
+      <small>Đơn hàng hợp lệ ({{ period_label }})</small>
       <h4 class="mb-2">{{ period_order_count }}</h4>
       <span class="badge {% if order_change.direction == 'up' %}text-bg-success{% elif order_change.direction == 'down' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
         {{ order_change.display }}
@@ -63,17 +63,27 @@
       <small class="text-muted mt-2">{{ order_change.note }}</small>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-md-6 col-xl">
     <div class="card tea-card border-0 shadow-sm p-3 h-100">
-      <small>Gia tri trung binh moi don</small>
+      <small>Sản phẩm đã tiêu thụ ({{ period_label }})</small>
+      <h4 class="mb-2">{{ period_quantity_sold }}</h4>
+      <span class="badge {% if quantity_change.direction == 'up' %}text-bg-success{% elif quantity_change.direction == 'down' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+        {{ quantity_change.display }}
+      </span>
+      <small class="text-muted mt-2">{{ quantity_change.note }}</small>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl">
+    <div class="card tea-card border-0 shadow-sm p-3 h-100">
+      <small>Giá trị trung bình mỗi đơn</small>
       <h4>{{ average_order_value|floatformat:0 }} VND</h4>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-md-6 col-xl">
     <div class="card tea-card border-0 shadow-sm p-3 h-100">
-      <small>Tong doanh thu toan he thong</small>
+      <small>Tổng doanh thu toàn hệ thống</small>
       <h4>{{ stats.total_revenue|floatformat:0 }} VND</h4>
-      <small class="text-muted">Tong don: {{ stats.total_orders }}</small>
+      <small class="text-muted">Tổng đơn: {{ stats.total_orders }}</small>
     </div>
   </div>
 </div>
@@ -82,16 +92,17 @@
   <div class="col-lg-8">
     <div class="card tea-card border-0 shadow-sm h-100">
       <div class="card-body">
-        <h5 class="mb-3">Xu huong doanh thu theo thoi gian</h5>
+        <h5 class="mb-3">Xu hướng doanh thu theo thời gian</h5>
         {% if trend_series %}
           <div class="table-responsive">
             <table class="table align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Ky</th>
-                  <th class="text-end">Don</th>
+                  <th>Kỳ</th>
+                  <th class="text-end">Đơn</th>
+                  <th class="text-end">SL tiêu thụ</th>
                   <th class="text-end">Doanh thu</th>
-                  <th>Ty le</th>
+                  <th>Tỷ lệ</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,8 +110,9 @@
                   <tr>
                     <td>{{ point.label }}</td>
                     <td class="text-end">{{ point.order_count }}</td>
+                    <td class="text-end">{{ point.quantity_sold }}</td>
                     <td class="text-end">{{ point.revenue|floatformat:0 }} VND</td>
-                    <td style="width: 32%">
+                    <td style="width: 28%">
                       <div class="progress" role="progressbar" aria-valuenow="{{ point.revenue_pct }}" aria-valuemin="0" aria-valuemax="100" style="height: 8px;">
                         <div class="progress-bar bg-success" style="width: {{ point.revenue_pct }}%;"></div>
                       </div>
@@ -111,7 +123,7 @@
             </table>
           </div>
         {% else %}
-          <p class="mb-0 text-muted">Khong co du lieu doanh thu trong ky nay.</p>
+          <p class="mb-0 text-muted">Không có dữ liệu doanh thu trong kỳ này.</p>
         {% endif %}
       </div>
     </div>
@@ -119,25 +131,25 @@
   <div class="col-lg-4">
     <div class="card tea-card border-0 shadow-sm mb-3">
       <div class="card-body">
-        <h5 class="mb-3">Phan tich xu huong ban hang</h5>
+        <h5 class="mb-3">Phân tích xu hướng bán hàng</h5>
         <ul class="list-group list-group-flush">
           {% for insight in trend_insights %}
             <li class="list-group-item px-0">{{ insight }}</li>
           {% empty %}
-            <li class="list-group-item px-0 text-muted">Chua co insight.</li>
+            <li class="list-group-item px-0 text-muted">Chưa có insight.</li>
           {% endfor %}
         </ul>
       </div>
     </div>
-    <div class="card tea-card border-0 shadow-sm">
+    <div class="card tea-card border-0 shadow-sm mb-3">
       <div class="card-body">
-        <h5 class="mb-3">Top san pham ban chay</h5>
+        <h5 class="mb-3">Top sản phẩm bán chạy</h5>
         {% if top_products %}
           <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
               <thead>
                 <tr>
-                  <th>San pham</th>
+                  <th>Sản phẩm</th>
                   <th class="text-end">SL</th>
                   <th class="text-end">Doanh thu</th>
                 </tr>
@@ -154,7 +166,36 @@
             </table>
           </div>
         {% else %}
-          <p class="mb-0 text-muted">Chua co san pham nao phat sinh doanh thu.</p>
+          <p class="mb-0 text-muted">Chưa có sản phẩm nào phát sinh doanh thu.</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card tea-card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">Sản phẩm tiêu thụ ít</h5>
+        {% if low_products %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Sản phẩm</th>
+                  <th class="text-end">SL</th>
+                  <th class="text-end">Doanh thu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in low_products %}
+                  <tr>
+                    <td>{{ row.product_name }}</td>
+                    <td class="text-end">{{ row.quantity_sold }}</td>
+                    <td class="text-end">{{ row.revenue|floatformat:0 }} VND</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="mb-0 text-muted">Chưa có sản phẩm tiêu thụ trong kỳ này.</p>
         {% endif %}
       </div>
     </div>
@@ -163,16 +204,16 @@
 
 <div class="card tea-card border-0 shadow-sm">
   <div class="card-body">
-    <h5 class="mb-3">Don hang gan day</h5>
+    <h5 class="mb-3">Đơn hàng gần đây</h5>
     <div class="table-responsive">
       <table class="table align-middle">
         <thead>
           <tr>
-            <th>Ma don</th>
-            <th>Khach</th>
-            <th>Tong tien</th>
-            <th>Trang thai</th>
-            <th>Ngay tao</th>
+            <th>Mã đơn</th>
+            <th>Khách</th>
+            <th>Tổng tiền</th>
+            <th>Trạng thái</th>
+            <th>Ngày tạo</th>
           </tr>
         </thead>
         <tbody>
@@ -185,7 +226,7 @@
               <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="5">Chua co don hang.</td></tr>
+            <tr><td colspan="5">Chưa có đơn hàng.</td></tr>
           {% endfor %}
         </tbody>
       </table>

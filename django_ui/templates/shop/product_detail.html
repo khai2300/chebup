@@ -9,7 +9,7 @@
       {% elif product.image_url %}
         <img src="{{ product.image_url }}" alt="{{ product.name }}" class="img-fluid rounded-4">
       {% else %}
-        <div class="tea-placeholder rounded-4">Chua co hinh anh</div>
+        <div class="tea-placeholder rounded-4">Chưa có hình ảnh</div>
       {% endif %}
     </div>
   </div>
@@ -18,22 +18,21 @@
     <h2 class="mb-3">{{ product.name }}</h2>
     <p class="text-muted">{{ product.description }}</p>
     <h4 class="tea-price mb-3">{{ product.price|floatformat:0 }} VND</h4>
-    <p class="mb-3">Ton kho con: <strong>{{ product.stock }}</strong></p>
+    <p class="mb-3">Tồn kho còn: <strong>{{ product.stock }}</strong></p>
     {% if product.source_zone or product.map_link %}
       <div class="card border-success-subtle mb-3">
         <div class="card-body py-2">
           {% if product.source_zone %}
-            <p class="mb-1"><strong>Khu nguon:</strong> {{ product.source_zone.name }} ({{ product.source_zone.code }})</p>
+            <p class="mb-1"><strong>Khu nguồn:</strong> {{ product.source_zone.name }} ({{ product.source_zone.code }})</p>
             <p class="mb-2 small text-muted">{{ product.source_zone.province }}</p>
           {% endif %}
           <div class="d-flex align-items-center gap-2 flex-wrap">
-            <a href="{% url 'shop:trace_product' product.id %}" class="btn btn-outline-success btn-sm">Truy xuat nguon san pham</a>
-            <img src="{% url 'shop:product_trace_qr' product.id %}" alt="QR truy xuat {{ product.name }}" width="86" height="86" class="rounded border">
-            <a href="{% url 'shop:product_trace_qr' product.id %}?download=1" class="btn btn-outline-success btn-sm">Tai QR</a>
-            {% if product.map_link %}
-              <a href="{{ product.map_link }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">Mo link map</a>
+            <a href="{% url 'shop:trace_product' product.id %}" class="btn btn-outline-success btn-sm">Truy xuất nguồn sản phẩm</a>
+            <img src="{% url 'shop:product_trace_qr' product.id %}" alt="QR truy xuất {{ product.name }}" width="86" height="86" class="rounded border">
+            {% if request.user.is_staff %}
+              <a href="{% url 'shop:product_trace_qr' product.id %}?download=1" class="btn btn-outline-success btn-sm">Tải QR</a>
             {% endif %}
-            <small class="text-muted">Quet QR de xem ban do khu san xuat</small>
+            <small class="text-muted">Quét QR để xem bản đồ khu sản xuất</small>
           </div>
           {% if product.map_link %}
             <div class="ratio ratio-16x9 mt-2">
@@ -52,22 +51,22 @@
     <form method="post" action="{% url 'shop:add_to_cart' product.id %}" class="d-flex gap-2 mb-2">
       {% csrf_token %}
       <input name="quantity" type="number" class="form-control" value="1" min="1" max="{{ product.stock }}" style="max-width:100px">
-      <button class="btn btn-success">Them vao gio</button>
-      <a href="{% url 'shop:cart' %}" class="btn btn-outline-success">Xem gio</a>
+      <button class="btn btn-success">Thêm vào giỏ</button>
+      <a href="{% url 'shop:cart' %}" class="btn btn-outline-success">Xem giỏ</a>
     </form>
   </div>
 </section>
 
 <section>
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">San pham lien quan</h4>
-    <a class="small text-decoration-none" href="{% url 'shop:home' %}">Xem tat ca</a>
+    <h4 class="mb-0">Sản phẩm liên quan</h4>
+    <a class="small text-decoration-none" href="{% url 'shop:home' %}">Xem tất cả</a>
   </div>
   <div class="row g-3">
     {% for product in related_products %}
       {% include "shop/partials/product_card.html" with product=product %}
     {% empty %}
-      <div class="col-12"><p class="text-muted mb-0">Chua co san pham lien quan.</p></div>
+      <div class="col-12"><p class="text-muted mb-0">Chưa có sản phẩm liên quan.</p></div>
     {% endfor %}
   </div>
 </section>

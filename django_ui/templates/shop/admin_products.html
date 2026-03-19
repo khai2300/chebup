@@ -1,29 +1,29 @@
 {% extends "shop/base.html" %}
-{% block title %}Admin - San pham{% endblock %}
+{% block title %}Admin - Sản phẩm{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h3 class="mb-0">Quan ly san pham</h3>
-  <a href="{% url 'shop:admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">Ve dashboard</a>
+  <h3 class="mb-0">Quản lý sản phẩm</h3>
+  <a href="{% url 'shop:admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">Về dashboard</a>
 </div>
 
 <div class="card tea-card border-0 shadow-sm mb-3">
   <div class="card-body">
-    <h5 class="mb-3">Them san pham moi</h5>
+    <h5 class="mb-3">Thêm sản phẩm mới</h5>
     <form method="post" enctype="multipart/form-data" class="row g-2">
       {% csrf_token %}
       <input type="hidden" name="action" value="create">
       <div class="col-md-4">
-        <input class="form-control" name="name" placeholder="Ten san pham" required>
+        <input class="form-control" name="name" placeholder="Tên sản phẩm" required>
       </div>
       <div class="col-md-2">
-        <input class="form-control" name="price" type="number" min="0" step="1" placeholder="Gia" required>
+        <input class="form-control" name="price" type="number" min="0" step="1" placeholder="Giá" required>
       </div>
       <div class="col-md-2">
-        <input class="form-control" name="stock" type="number" min="0" step="1" placeholder="Ton kho" required>
+        <input class="form-control" name="stock" type="number" min="0" step="1" placeholder="Tồn kho" required>
       </div>
       <div class="col-md-4">
         <select class="form-select" name="category_id" required>
-          <option value="">Chon danh muc</option>
+          <option value="">Chọn danh mục</option>
           {% for category in categories %}
             <option value="{{ category.id }}">{{ category.name }}</option>
           {% endfor %}
@@ -31,36 +31,36 @@
       </div>
       <div class="col-md-6">
         <select class="form-select" name="source_zone_id">
-          <option value="">Chon khu nguon (truy xuat)</option>
+          <option value="">Chọn khu nguồn (truy xuất)</option>
           {% for zone in zones %}
             <option value="{{ zone.id }}">{{ zone.name }} - {{ zone.province }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="col-md-6">
-        <input class="form-control" name="short_description" placeholder="Mo ta ngan">
+        <input class="form-control" name="short_description" placeholder="Mô tả ngắn">
       </div>
       <div class="col-md-6">
-        <input class="form-control" name="description" placeholder="Mo ta chi tiet">
+        <input class="form-control" name="description" placeholder="Mô tả chi tiết">
       </div>
       <div class="col-md-3">
-        <input class="form-control" name="image_url" placeholder="Hoac dan URL anh">
+        <input class="form-control" name="image_url" placeholder="Hoặc dán URL ảnh">
       </div>
       <div class="col-md-3">
         <input class="form-control" name="image" type="file" accept="image/*">
       </div>
       <div class="col-md-3">
-        <textarea class="form-control" name="map_link" rows="2" placeholder="Dan link map hoac iframe Google Maps"></textarea>
+        <textarea class="form-control" name="map_link" rows="2" placeholder="Dán link map hoặc iframe Google Maps"></textarea>
       </div>
       <div class="col-md-2 d-grid">
-        <button class="btn btn-success" type="submit">Them san pham</button>
+        <button class="btn btn-success" type="submit">Thêm sản phẩm</button>
       </div>
       <div class="col-12">
         <small class="text-muted">
-          Sau khi tao san pham, ban co the quet QR trong danh sach ben duoi de mo ban do truy xuat nguon goc.
+          Sau khi tạo sản phẩm, bạn có thể quét QR trong danh sách bên dưới để mở bản đồ truy xuất nguồn gốc.
         </small>
         <small class="text-muted d-block">
-          O map cho phep dan full iframe Google Maps, he thong se tu dong lay src de hien thi.
+          Ô map cho phép dán full iframe Google Maps, hệ thống sẽ tự động lấy src để hiển thị.
         </small>
       </div>
     </form>
@@ -69,27 +69,28 @@
 
 <div class="card tea-card border-0 shadow-sm">
   <div class="card-body">
-    <h5 class="mb-1">Danh sach san pham (admin co the sua/xoa)</h5>
-    <small class="text-muted d-block mb-3">Co the sua nhieu san pham roi bam mot lan de luu tat ca.</small>
+    <h5 class="mb-1">Danh sách sản phẩm (admin có thể sửa/xóa)</h5>
+    <small class="text-muted d-block mb-3">Có thể sửa nhiều sản phẩm rồi bấm một lần để lưu tất cả.</small>
     {% if products %}
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
+        <input type="hidden" name="action" value="bulk_update">
         <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
           <div class="form-check m-0">
             <input class="form-check-input" type="checkbox" id="select-all-products">
-            <label class="form-check-label" for="select-all-products">Chon tat ca san pham</label>
+            <label class="form-check-label" for="select-all-products">Chọn tất cả sản phẩm</label>
           </div>
           <div class="d-flex gap-2">
+            <button class="btn btn-success" type="submit">Lưu thay đổi</button>
             <button
               class="btn btn-outline-danger"
               type="submit"
               name="action"
               value="bulk_delete_selected"
-              onclick="return confirm('Ban chac chan muon xoa cac san pham da chon?');"
+              onclick="return confirm('Bạn chắc chắn muốn xóa các sản phẩm đã chọn?');"
             >
-              Xoa san pham da chon
+              Xóa sản phẩm đã chọn
             </button>
-            <button class="btn btn-success" type="submit" name="action" value="bulk_update">Luu thay doi</button>
           </div>
         </div>
         {% for product in products %}
@@ -105,10 +106,10 @@
                   id="select-product-{{ product.id }}"
                 >
                 <label class="form-check-label mb-0" for="select-product-{{ product.id }}">
-                  <strong>San pham #{{ product.id }}</strong>
+                  <strong>Sản phẩm #{{ product.id }}</strong>
                 </label>
               </div>
-              <small class="text-muted">Dong nay se duoc luu khi bam "Luu tat ca thay doi"</small>
+              <small class="text-muted">Dòng này sẽ được lưu khi bấm "Lưu tất cả thay đổi"</small>
             </div>
             <div class="row g-2">
               <div class="col-lg-3">
@@ -127,15 +128,15 @@
                     id="clear-image-{{ product.id }}"
                   >
                   <label class="form-check-label small" for="clear-image-{{ product.id }}">
-                    Xoa anh upload hien tai
+                    Xóa ảnh upload hiện tại
                   </label>
                 </div>
               </div>
               <div class="col-lg-4">
-                <input class="form-control form-control-sm mb-2" name="product_{{ product.id }}_name" value="{{ product.name }}" placeholder="Ten san pham" required>
-                <input class="form-control form-control-sm mb-2" name="product_{{ product.id }}_short_description" value="{{ product.short_description }}" placeholder="Mo ta ngan">
-                <textarea class="form-control form-control-sm" rows="3" name="product_{{ product.id }}_description" placeholder="Mo ta chi tiet">{{ product.description }}</textarea>
-                <textarea class="form-control form-control-sm mt-2" name="product_{{ product.id }}_map_link" rows="2" placeholder="Dan link map hoac iframe Google Maps">{{ product.map_link }}</textarea>
+                <input class="form-control form-control-sm mb-2" name="product_{{ product.id }}_name" value="{{ product.name }}" placeholder="Tên sản phẩm" required>
+                <input class="form-control form-control-sm mb-2" name="product_{{ product.id }}_short_description" value="{{ product.short_description }}" placeholder="Mô tả ngắn">
+                <textarea class="form-control form-control-sm" rows="3" name="product_{{ product.id }}_description" placeholder="Mô tả chi tiết">{{ product.description }}</textarea>
+                <textarea class="form-control form-control-sm mt-2" name="product_{{ product.id }}_map_link" rows="2" placeholder="Dán link map hoặc iframe Google Maps">{{ product.map_link }}</textarea>
               </div>
               <div class="col-lg-2">
                 <select class="form-select form-select-sm mb-2" name="product_{{ product.id }}_category_id" required>
@@ -146,7 +147,7 @@
                   {% endfor %}
                 </select>
                 <select class="form-select form-select-sm" name="product_{{ product.id }}_source_zone_id">
-                  <option value="">Chua gan khu nguon</option>
+                  <option value="">Chưa gắn khu nguồn</option>
                   {% for zone in zones %}
                     <option value="{{ zone.id }}" {% if product.source_zone_id == zone.id %}selected{% endif %}>
                       {{ zone.name }} - {{ zone.province }}
@@ -159,46 +160,46 @@
                 <input class="form-control form-control-sm" name="product_{{ product.id }}_stock" type="number" min="0" step="1" value="{{ product.stock }}" required>
               </div>
               <div class="col-lg-2 d-grid gap-2">
-                <button class="btn btn-sm btn-success" type="submit" name="action" value="bulk_update">Luu thay doi</button>
+                <button class="btn btn-sm btn-success" type="submit">Lưu thay đổi</button>
                 <button
                   class="btn btn-sm btn-outline-danger"
                   type="submit"
                   name="action"
                   value="delete:{{ product.id }}"
-                  onclick="return confirm('Ban chac chan muon xoa san pham nay?');"
+                  onclick="return confirm('Bạn chắc chắn muốn xóa sản phẩm này?');"
                 >
-                  Xoa san pham
+                  Xóa sản phẩm
                 </button>
-                <a href="{% url 'shop:trace_product' product.id %}" class="btn btn-sm btn-outline-success">Mo map nguon goc</a>
+                <a href="{% url 'shop:trace_product' product.id %}" class="btn btn-sm btn-outline-success">Mở map nguồn gốc</a>
               </div>
             </div>
             <div class="mt-3 p-2 rounded border bg-light-subtle d-flex justify-content-between align-items-center flex-wrap gap-2">
               <div>
-                <small class="text-muted d-block">QR truy xuat san pham #{{ product.id }}</small>
+                <small class="text-muted d-block">QR truy xuất sản phẩm #{{ product.id }}</small>
                 {% if product.source_zone %}
                   <small class="d-block">
-                    Nguon: <strong>{{ product.source_zone.name }}</strong> ({{ product.source_zone.code }}) - {{ product.source_zone.province }}
+                    Nguồn: <strong>{{ product.source_zone.name }}</strong> ({{ product.source_zone.code }}) - {{ product.source_zone.province }}
                   </small>
                 {% else %}
-                  <small class="text-danger d-block">San pham chua gan khu nguon, map se hien vi tri mac dinh.</small>
+                  <small class="text-danger d-block">Sản phẩm chưa gắn khu nguồn, map sẽ hiện vị trí mặc định.</small>
                 {% endif %}
                 <a href="{% url 'shop:product_trace_qr' product.id %}" target="_blank" rel="noopener" class="small text-decoration-none">
-                  Mo anh QR de in
+                  Mở ảnh QR để in
                 </a>
                 <a href="{% url 'shop:product_trace_qr' product.id %}?download=1" class="small text-decoration-none d-block">
-                  Tai QR truy xuat
+                  Tải QR truy xuất
                 </a>
                 {% if product.map_link %}
                   <a href="{{ product.map_link }}" target="_blank" rel="noopener" class="small text-decoration-none d-block">
-                    Mo link map da gan
+                    Mở link map đã gắn
                   </a>
                 {% else %}
-                  <small class="text-muted d-block">Chua gan link map ngoai.</small>
+                  <small class="text-muted d-block">Chưa gắn link map ngoài.</small>
                 {% endif %}
               </div>
               <img
                 src="{% url 'shop:product_trace_qr' product.id %}"
-                alt="QR truy xuat {{ product.name }}"
+                alt="QR truy xuất {{ product.name }}"
                 width="92"
                 height="92"
                 class="rounded border bg-white"
@@ -207,20 +208,20 @@
           </div>
         {% endfor %}
         <div class="d-flex justify-content-end gap-2">
+          <button class="btn btn-success" type="submit">Lưu tất cả thay đổi</button>
           <button
             class="btn btn-outline-danger"
             type="submit"
             name="action"
             value="bulk_delete_selected"
-            onclick="return confirm('Ban chac chan muon xoa cac san pham da chon?');"
+            onclick="return confirm('Bạn chắc chắn muốn xóa các sản phẩm đã chọn?');"
           >
-            Xoa san pham da chon
+            Xóa sản phẩm đã chọn
           </button>
-          <button class="btn btn-success" type="submit" name="action" value="bulk_update">Luu tat ca thay doi</button>
         </div>
       </form>
     {% else %}
-      <p class="text-muted mb-0">Chua co du lieu san pham.</p>
+      <p class="text-muted mb-0">Chưa có dữ liệu sản phẩm.</p>
     {% endif %}
   </div>
 </div>

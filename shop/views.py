@@ -22,6 +22,7 @@ from .views_public import (
     news_list,
     product_detail,
     product_trace_qr,
+    robots_txt,
     search_suggest,
     trace_product,
 )
@@ -29,6 +30,7 @@ from .views_public import (
 __all__ = [
     "home",
     "news_list",
+    "robots_txt",
     "search_suggest",
     "register_view",
     "login_view",

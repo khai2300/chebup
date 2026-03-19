@@ -12,8 +12,8 @@ from .models import CartItem, OrderTraceToken, Promotion
 PAYMENT_METHOD_COD = "COD"
 PAYMENT_METHOD_BANK_TRANSFER = "Bank Transfer"
 PAYMENT_METHODS = [
-    {"value": PAYMENT_METHOD_COD, "label": "Thanh toan khi nhan hang (COD)"},
-    {"value": PAYMENT_METHOD_BANK_TRANSFER, "label": "Thanh toan online (Ngan hang)"},
+    {"value": PAYMENT_METHOD_COD, "label": "Thanh toán khi nhận hàng (COD)"},
+    {"value": PAYMENT_METHOD_BANK_TRANSFER, "label": "Thanh toán online (Ngân hàng)"},
 ]
 PAYMENT_METHOD_VALUES = {method["value"] for method in PAYMENT_METHODS}
 
@@ -24,11 +24,16 @@ def get_or_create_order_trace_token(order):
 
 
 def build_public_url(request, path):
+    host = request.get_host().strip()
+    host_name = host.split(":", 1)[0].lower()
+    if host_name.endswith(".trycloudflare.com"):
+        return f"https://{host_name}/{path.lstrip('/')}"
+
     base_url = (getattr(settings, "QR_PUBLIC_BASE_URL", "") or "").strip()
     if base_url:
         return f"{base_url.rstrip('/')}/{path.lstrip('/')}"
+
     scheme = "https" if request.is_secure() else "http"
-    host = request.get_host().strip()
     if host and not host.startswith(("127.0.0.1", "localhost", "[::1]", "::1")):
         return f"{scheme}://{host}/{path.lstrip('/')}"
 

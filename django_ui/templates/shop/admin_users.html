@@ -1,9 +1,9 @@
 {% extends "shop/base.html" %}
-{% block title %}Admin - Nguoi dung{% endblock %}
+{% block title %}Admin - Người dùng{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h3 class="mb-0">Quan ly nguoi dung</h3>
-  <a href="{% url 'shop:admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">Ve dashboard</a>
+  <h3 class="mb-0">Quản lý người dùng</h3>
+  <a href="{% url 'shop:admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">Về dashboard</a>
 </div>
 <div class="card tea-card border-0 shadow-sm">
   <div class="table-responsive">
@@ -14,7 +14,7 @@
           <th>Username</th>
           <th>Email</th>
           <th>Staff</th>
-          <th>Ngay tao</th>
+          <th>Ngày tạo</th>
         </tr>
       </thead>
       <tbody>
@@ -23,11 +23,11 @@
             <td>{{ user.id }}</td>
             <td>{{ user.username }}</td>
             <td>{{ user.email }}</td>
-            <td>{% if user.is_staff %}Co{% else %}Khong{% endif %}</td>
+            <td>{% if user.is_staff %}Có{% else %}Không{% endif %}</td>
             <td>{{ user.date_joined|date:"d/m/Y H:i" }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="5">Chua co nguoi dung.</td></tr>
+          <tr><td colspan="5">Chưa có người dùng.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -11,10 +11,23 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 import os
+import socket
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_list(name, default=""):
+    raw_value = os.environ.get(name, default)
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
 
 
 # Quick-start development settings - unsuitable for production
@@ -24,19 +37,84 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-this")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _env_bool("DJANGO_DEBUG", True)
 
-_allowed_hosts_raw = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,testserver")
-ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts_raw.split(",") if host.strip()]
+ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,testserver")
 QR_PUBLIC_BASE_URL = os.environ.get("QR_PUBLIC_BASE_URL", "").strip().rstrip("/")
+SITE_URL = os.environ.get("SITE_URL", "").strip().rstrip("/")
+CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS", "")
+DEFAULT_META_DESCRIPTION = os.environ.get(
+    "DEFAULT_META_DESCRIPTION",
+    "Che Bup Market - cua hang che sach Thai Nguyen, tra xanh, tra den, giao hang toan quoc.",
+).strip()
 BANK_TRANSFER_BANK_NAME = os.environ.get("BANK_TRANSFER_BANK_NAME", "Techcombank").strip()
 BANK_TRANSFER_BANK_CODE = os.environ.get("BANK_TRANSFER_BANK_CODE", "TCB").strip().upper()
 BANK_TRANSFER_ACCOUNT_NAME = os.environ.get("BANK_TRANSFER_ACCOUNT_NAME", "NGUYEN TRI KHAI").strip()
 BANK_TRANSFER_ACCOUNT_NUMBER = os.environ.get("BANK_TRANSFER_ACCOUNT_NUMBER", "19037577368017").strip()
 BANK_TRANSFER_NOTE_PREFIX = os.environ.get("BANK_TRANSFER_NOTE_PREFIX", "THANH TOAN").strip()
 
-if DEBUG and not os.environ.get("DJANGO_ALLOWED_HOSTS"):
-    ALLOWED_HOSTS = ["*"]
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+).strip()
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com").strip()
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587") or 587)
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "").strip()
+EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", True)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@chebup.local").strip()
+ORDER_NOTIFY_TO = _env_list("ORDER_NOTIFY_TO", "")
+
+if DEBUG:
+    # Dev convenience: allow localhost + current LAN IP so phone can open QR links.
+    if not os.environ.get("DJANGO_ALLOWED_HOSTS"):
+        ALLOWED_HOSTS = ["*"]
+    else:
+        dev_hosts = {"127.0.0.1", "localhost", "testserver"}
+        lan_ip = ""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.connect(("8.8.8.8", 80))
+                lan_ip = sock.getsockname()[0]
+            if lan_ip and not lan_ip.startswith("127."):
+                dev_hosts.add(lan_ip)
+        except OSError:
+            pass
+        ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS + sorted(dev_hosts)))
+
+        # Accept POST/CSRF from phone and temporary Cloudflare tunnel during development.
+        CSRF_TRUSTED_ORIGINS += [
+            "http://127.0.0.1:8000",
+            "http://localhost:8000",
+            "https://*.trycloudflare.com",
+        ]
+        if lan_ip and not lan_ip.startswith("127."):
+            CSRF_TRUSTED_ORIGINS.append(f"http://{lan_ip}:8000")
+
+if SITE_URL.startswith(("http://", "https://")):
+    CSRF_TRUSTED_ORIGINS.append(SITE_URL)
+if QR_PUBLIC_BASE_URL.startswith(("http://", "https://")):
+    CSRF_TRUSTED_ORIGINS.append(QR_PUBLIC_BASE_URL)
+
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
+
+# Security defaults: safe for production, overridable by env vars.
+USE_X_FORWARDED_PROTO = _env_bool("USE_X_FORWARDED_PROTO", not DEBUG)
+if USE_X_FORWARDED_PROTO:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", not DEBUG)
+SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", not DEBUG)
+CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", not DEBUG)
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = os.environ.get("SECURE_REFERRER_POLICY", "same-origin").strip()
+
+_default_hsts_seconds = "31536000" if not DEBUG else "0"
+SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", _default_hsts_seconds) or 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", not DEBUG)
+SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", not DEBUG)
 
 
 # Application definition
@@ -45,6 +123,7 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
+    'django.contrib.sitemaps',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -74,6 +153,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'shop.context_processors.seo_defaults',
             ],
         },
     },

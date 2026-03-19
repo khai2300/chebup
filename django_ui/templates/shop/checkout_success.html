@@ -1,17 +1,17 @@
 {% extends "shop/base.html" %}
-{% block title %}Thanh toan thanh cong{% endblock %}
+{% block title %}Thanh toán thành công{% endblock %}
 {% block content %}
 <div class="success-page">
   <div class="success-card">
     <div class="success-icon">?</div>
-    <h3>Thanh toan thanh cong</h3>
+    <h3>Thanh toán thành công</h3>
     {% if order %}
-      <p class="text-muted">Don hang #{{ order.id }} cua ban da duoc ghi nhan.</p>
+      <p class="text-muted">Đơn hàng #{{ order.id }} của bạn đã được ghi nhận.</p>
     {% else %}
-      <p class="text-muted">Don hang cua ban da duoc ghi nhan.</p>
+      <p class="text-muted">Đơn hàng của bạn đã được ghi nhận.</p>
     {% endif %}
-    <p class="text-muted">Dang chuyen ve trang chu trong <span id="countdown">3</span> giay.</p>
-    <a href="{% url 'shop:home' %}" class="btn btn-success">Ve trang chu ngay</a>
+    <p class="text-muted">Đang chuyển về trang chủ trong <span id="countdown">3</span> giây.</p>
+    <a href="{% url 'shop:home' %}" class="btn btn-success">Về trang chủ ngay</a>
   </div>
 </div>
 {% endblock %}

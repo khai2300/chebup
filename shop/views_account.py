@@ -24,7 +24,7 @@ def add_address(request):
         "city": request.POST.get("city", "").strip(),
     }
     if not all(payload.values()):
-        messages.error(request, "Vui long nhap day du thong tin dia chi.")
+        messages.error(request, "Vui lòng nhập đầy đủ thông tin địa chỉ.")
         return redirect("shop:account")
 
     set_default = request.POST.get("set_default") == "on"
@@ -33,7 +33,7 @@ def add_address(request):
         set_default = True
 
     Address.objects.create(user=request.user, is_default=set_default, **payload)
-    messages.success(request, "Da them dia chi giao hang.")
+    messages.success(request, "Đã thêm địa chỉ giao hàng.")
     return redirect("shop:account")
 
 
@@ -44,7 +44,7 @@ def set_default_address(request, address_id):
     Address.objects.filter(user=request.user).update(is_default=False)
     address.is_default = True
     address.save(update_fields=["is_default"])
-    messages.success(request, "Da cap nhat dia chi mac dinh.")
+    messages.success(request, "Đã cập nhật địa chỉ mặc định.")
     return redirect("shop:account")
 
 
@@ -62,5 +62,5 @@ def delete_address(request, address_id):
             next_address.is_default = True
             next_address.save(update_fields=["is_default"])
 
-    messages.success(request, "Da xoa dia chi giao hang.")
+    messages.success(request, "Đã xóa địa chỉ giao hàng.")
     return redirect("shop:account")

@@ -1,7 +1,7 @@
 {% extends "shop/base.html" %}
-{% block title %}Lich su don hang{% endblock %}
+{% block title %}Lịch sử đơn hàng{% endblock %}
 {% block content %}
-<h3 class="mb-3">Lich su don hang</h3>
+<h3 class="mb-3">Lịch sử đơn hàng</h3>
 
 {% for order in orders %}
   <div class="card tea-card border-0 shadow-sm mb-3">
@@ -18,7 +18,7 @@
           {% if order.status == "Pending" %}
             <form method="post" action="{% url 'shop:cancel_order' order.id %}">
               {% csrf_token %}
-              <button class="btn btn-outline-danger btn-sm">Huy don</button>
+              <button class="btn btn-outline-danger btn-sm">Hủy đơn</button>
             </form>
           {% endif %}
         </div>
@@ -34,8 +34,8 @@
   </div>
 {% empty %}
   <div class="empty-state">
-    <h5>Ban chua co don nao</h5>
-    <p class="mb-3">Hay chon san pham che bup va dat don ngay.</p>
+    <h5>Bạn chưa có đơn nào</h5>
+    <p class="mb-3">Hãy chọn sản phẩm chè búp và đặt đơn ngay.</p>
     <a href="{% url 'shop:home' %}" class="btn btn-success">Mua ngay</a>
   </div>
 {% endfor %}
