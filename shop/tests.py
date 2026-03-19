@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Category, Product
+from .models import Category, Product, ProductionZone
 
 
 class AdminProductsViewTests(TestCase):
@@ -13,6 +13,15 @@ class AdminProductsViewTests(TestCase):
             is_staff=True,
         )
         self.category = Category.objects.create(name="Tra xanh")
+        self.other_category = Category.objects.create(name="Tra den")
+        self.zone = ProductionZone.objects.create(
+            name="Tan Cuong",
+            code="TC001",
+            province="Thai Nguyen",
+            latitude="21.594444",
+            longitude="105.848611",
+            description="Vung trong che chat luong cao",
+        )
         self.product = Product.objects.create(
             category=self.category,
             name="Tra moc",
@@ -20,6 +29,27 @@ class AdminProductsViewTests(TestCase):
             short_description="Ngan",
             price="100000.00",
             stock=10,
+            source_zone=self.zone,
+            image_url="",
+            map_link="",
+        )
+        self.low_stock_product = Product.objects.create(
+            category=self.other_category,
+            name="Hong tra",
+            description="Lo hang sap het",
+            short_description="Con it",
+            price="80000.00",
+            stock=3,
+            image_url="",
+            map_link="",
+        )
+        self.out_of_stock_product = Product.objects.create(
+            category=self.other_category,
+            name="Tra sua kho",
+            description="Tam het hang",
+            short_description="Het hang",
+            price="90000.00",
+            stock=0,
             image_url="",
             map_link="",
         )
@@ -62,3 +92,21 @@ class AdminProductsViewTests(TestCase):
         self.assertRedirects(response, self.url, fetch_redirect_response=False)
         self.product.refresh_from_db()
         self.assertEqual(self.product.name, "Tra o long")
+
+    def test_admin_products_can_filter_by_keyword_and_zone(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.url, {"q": "Tan Cuong", "zone": str(self.zone.id)})
+
+        self.assertEqual(response.status_code, 200)
+        products = list(response.context["products"])
+        self.assertEqual(products, [self.product])
+
+    def test_admin_products_can_filter_by_stock_state(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.url, {"stock": "low_stock"})
+
+        self.assertEqual(response.status_code, 200)
+        products = list(response.context["products"])
+        self.assertEqual(products, [self.low_stock_product])
