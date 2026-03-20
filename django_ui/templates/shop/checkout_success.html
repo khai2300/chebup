@@ -1,13 +1,27 @@
 {% extends "shop/base.html" %}
-{% block title %}Thanh toán thành công{% endblock %}
+{% block title %}Kết quả đặt hàng{% endblock %}
 {% block content %}
 <div class="success-page">
   <div class="success-card">
     <div class="success-icon">?</div>
-    <h3>Thanh toán thành công</h3>
     {% if order %}
-      <p class="text-muted">Đơn hàng #{{ order.id }} của bạn đã được ghi nhận.</p>
+      {% if payment_method == 'VNPAY' %}
+        {% if order_status == 'Processing' %}
+          <h3>Thanh toán thành công</h3>
+          <p class="text-muted">Đơn hàng #{{ order.id }} của bạn đã được ghi nhận.</p>
+        {% elif order_status == 'Payment Failed' or order_status == 'Cancelled' %}
+          <h3>Thanh toán không thành công</h3>
+          <p class="text-muted">Đơn hàng #{{ order.id }} chưa được thanh toán.</p>
+        {% else %}
+          <h3>Đặt hàng đã được tạo</h3>
+          <p class="text-muted">Đơn hàng #{{ order.id }} của bạn đã được ghi nhận, nhưng thanh toán chưa hoàn tất.</p>
+        {% endif %}
+      {% else %}
+        <h3>Đặt hàng thành công</h3>
+        <p class="text-muted">Đơn hàng #{{ order.id }} của bạn đã được ghi nhận.</p>
+      {% endif %}
     {% else %}
+      <h3>Đặt hàng thành công</h3>
       <p class="text-muted">Đơn hàng của bạn đã được ghi nhận.</p>
     {% endif %}
     <p class="text-muted">Đang chuyển về trang chủ trong <span id="countdown">3</span> giây.</p>

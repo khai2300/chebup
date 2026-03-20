@@ -13,11 +13,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 import socket
 from pathlib import Path
-
+from dotenv import load_dotenv
 import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 def _env_bool(name, default=False):
     value = os.environ.get(name)

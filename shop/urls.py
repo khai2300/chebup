@@ -28,7 +28,12 @@ urlpatterns = [
     path("cart/remove/<int:item_id>/", views.remove_cart, name="remove_cart"),
     path("checkout/", views.checkout, name="checkout"),
     path("checkout/success/", views.checkout_success, name="checkout_success"),
+    # Accept both with and without trailing slash - some payment gateways omit trailing slash
+    path("payment/vnpay/return", views.vnpay_return),
     path("payment/vnpay/return/", views.vnpay_return, name="vnpay_return"),
+    # Compatibility: some VNPAY configs use an underscore instead of a path segment
+    path("payment/vnpay_return", views.vnpay_return),
+    path("payment/vnpay_return/", views.vnpay_return),
     path("payment/vnpay/ipn/", views.vnpay_ipn, name="vnpay_ipn"),
     path("account/", views.account, name="account"),
     path("account/address/add/", views.add_address, name="add_address"),

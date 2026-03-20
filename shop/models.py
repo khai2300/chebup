@@ -130,12 +130,14 @@ class Order(models.Model):
     STATUS_SHIPPED = "Shipped"
     STATUS_DELIVERED = "Delivered"
     STATUS_CANCELLED = "Cancelled"
+    STATUS_PAYMENT_FAILED = "Payment Failed"
     STATUS_CHOICES = [
         (STATUS_PENDING, "Pending"),
         (STATUS_PROCESSING, "Processing"),
         (STATUS_SHIPPED, "Shipped"),
         (STATUS_DELIVERED, "Delivered"),
         (STATUS_CANCELLED, "Cancelled"),
+        (STATUS_PAYMENT_FAILED, "Payment Failed"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")

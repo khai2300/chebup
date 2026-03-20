@@ -139,3 +139,8 @@ Luu y: `EMAIL_HOST_PASSWORD` la **App Password** cua Gmail, khong phai mat khau 
 - Vao: `/dashboard/admin/products/`
 - O form "Them san pham moi", chon file trong o `Anh` de upload tu may tinh.
 - Co the cap nhat anh nhanh tung san pham ngay trong bang danh sach.
+Ngân hàng	NCB
+Số thẻ	9704198526191432198
+Tên chủ thẻ	NGUYEN VAN A
+Ngày phát hành	07/15
+Mật khẩu OTP	123456

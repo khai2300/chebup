@@ -309,17 +309,24 @@ def checkout_success(request):
     order = None
     if order_id.isdigit():
         order = Order.objects.filter(id=int(order_id), user=request.user).first()
-    return render(request, "shop/checkout_success.html", {"order": order})
+    context = {"order": order}
+    if order:
+        context["order_status"] = order.status
+        context["payment_method"] = order.payment_method
+    else:
+        context["order_status"] = ""
+        context["payment_method"] = ""
+    return render(request, "shop/checkout_success.html", context)
 
 
-@login_required
 @require_GET
 def vnpay_return(request):
     params = request.GET.dict()
     order_id = params.get("vnp_TxnRef", "")
     order = None
+    # Allow callback from VNPAY even if user's session isn't preserved.
     if order_id.isdigit():
-        order = Order.objects.filter(id=int(order_id), user=request.user).first()
+        order = Order.objects.filter(id=int(order_id)).first()
 
     if not params or not verify_vnpay_signature(params):
         messages.error(request, "Chu ky VNPAY khong hop le.")
@@ -334,6 +341,13 @@ def vnpay_return(request):
                 order.save(update_fields=["status"])
             messages.success(request, "Thanh toan VNPAY thanh cong.")
         else:
+            # Mark the order as payment-failed so it's clear payment didn't complete
+            if order.status == Order.STATUS_PENDING:
+                try:
+                    order.status = Order.STATUS_PAYMENT_FAILED
+                    order.save(update_fields=["status"])
+                except Exception:
+                    pass
             messages.warning(request, "Thanh toan VNPAY that bai hoac bi huy.")
 
     success_url = reverse("shop:checkout_success")
@@ -371,5 +385,13 @@ def vnpay_ipn(request):
         if order.status == Order.STATUS_PENDING:
             order.status = Order.STATUS_PROCESSING
             order.save(update_fields=["status"])
+    else:
+        # If IPN indicates failure, mark payment failed
+        if order.status == Order.STATUS_PENDING:
+            try:
+                order.status = Order.STATUS_PAYMENT_FAILED
+                order.save(update_fields=["status"])
+            except Exception:
+                pass
 
     return JsonResponse({"RspCode": "00", "Message": "Confirm Success"})

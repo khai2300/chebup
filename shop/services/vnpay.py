@@ -1,10 +1,11 @@
 import hashlib
 import hmac
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.conf import settings
 from django.urls import reverse
+from django.utils import timezone
 
 from shop.views_utils import build_public_url
 
@@ -42,9 +43,13 @@ def build_vnpay_payment_url(request, order):
     return_url = (getattr(settings, "VNPAY_RETURN_URL", "") or "").strip()
     if not return_url:
         return_url = build_public_url(request, reverse("shop:vnpay_return"))
+    else:
+        # Ensure trailing slash matches Django URL pattern to avoid 404 from VNPAY callback
+        if not return_url.endswith("/"):
+            return_url = return_url + "/"
 
     amount = int(order.final_amount or 0) * 100
-    now = datetime.utcnow()
+    now = timezone.localtime(timezone.now())
     expire = now + timedelta(minutes=15)
 
     params = {
