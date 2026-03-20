@@ -16,6 +16,8 @@ from .views_orders import (
     order_trace_qr,
     orders,
     trace_order,
+    vnpay_ipn,
+    vnpay_return,
 )
 from .views_public import (
     home,
@@ -52,6 +54,8 @@ __all__ = [
     "order_trace_qr",
     "trace_order",
     "checkout_success",
+    "vnpay_return",
+    "vnpay_ipn",
     "chat_view",
     "chat_api",
     "chat_reset",

@@ -8,16 +8,18 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Address, CartItem, Order, OrderItem, OrderTraceToken
 from .services.notifications import send_order_notification_email
+from .services.vnpay import build_vnpay_payment_url, is_vnpay_configured, verify_vnpay_signature
 from .views_utils import (
     PAYMENT_METHOD_COD,
     PAYMENT_METHOD_BANK_TRANSFER,
+    PAYMENT_METHOD_VNPAY,
     PAYMENT_METHODS,
     PAYMENT_METHOD_VALUES,
     build_bank_transfer_info,
@@ -33,7 +35,7 @@ logger = logging.getLogger(__name__)
 def checkout(request):
     addresses = Address.objects.filter(user=request.user)
     if not addresses.exists():
-        messages.error(request, "Báº¡n cáº§n thÃªm Ä‘á»‹a chá»‰ trÆ°á»›c khi Ä‘áº·t hÃ ng.")
+        messages.error(request, "Bạn cần thêm địa chỉ trước khi đặt hàng.")
         return redirect("shop:account")
 
     promo_code = request.POST.get("promo_code", request.GET.get("promo_code", "")).strip().upper()
@@ -45,7 +47,7 @@ def checkout(request):
     if selected_payment_method not in PAYMENT_METHOD_VALUES:
         selected_payment_method = PAYMENT_METHOD_COD
     if not cart_items:
-        messages.warning(request, "Giá» hÃ ng Ä‘ang trá»‘ng.")
+        messages.warning(request, "Giỏ hàng đang trống.")
         return redirect("shop:home")
 
     if request.method == "POST":
@@ -56,23 +58,26 @@ def checkout(request):
 
         address = Address.objects.filter(user=request.user, id=address_id).first()
         if address is None:
-            messages.error(request, "Äá»‹a chá»‰ giao hÃ ng khÃ´ng há»£p lá»‡.")
+            messages.error(request, "Địa chỉ giao hàng không hợp lệ.")
             return redirect("shop:checkout")
         if payment_method not in PAYMENT_METHOD_VALUES:
-            messages.error(request, "PhÆ°Æ¡ng thá»©c thanh toÃ¡n khÃ´ng há»£p lá»‡.")
+            messages.error(request, "Phương thức thanh toán không hợp lệ.")
             return redirect("shop:checkout")
         if payment_method == PAYMENT_METHOD_BANK_TRANSFER and (
             not bank_transfer_name or not bank_transfer_phone
         ):
-            messages.error(request, "Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin.")
+            messages.error(request, "Vui lòng nhập đầy đủ thông tin.")
             query = {"payment_method": payment_method}
             if promo_code:
                 query["promo_code"] = promo_code
             return redirect(f"{reverse('shop:checkout')}?{urlencode(query)}")
+        if payment_method == PAYMENT_METHOD_VNPAY and not is_vnpay_configured():
+            messages.error(request, "VNPAY chua duoc cau hinh. Vui long lien he admin.")
+            return redirect("shop:checkout")
 
         for item in cart_items:
             if item.quantity > item.product.stock:
-                messages.error(request, f"Sáº£n pháº©m {item.product.name} khÃ´ng Ä‘á»§ tá»“n kho.")
+                messages.error(request, f"Sản phẩm {item.product.name} không đủ tồn kho.")
                 return redirect("shop:cart")
 
         with transaction.atomic():
@@ -141,16 +146,32 @@ def checkout(request):
                     "Đơn hàng đã tạo thành công, nhưng gửi email thất bại. Bạn hãy kiểm tra cấu hình Gmail SMTP.",
                 )
 
+        if payment_method == PAYMENT_METHOD_VNPAY:
+            vnpay_url = build_vnpay_payment_url(request, order)
+            if not vnpay_url:
+                messages.error(request, "Khong tao duoc link VNPAY. Vui long thu lai sau.")
+                return redirect("shop:checkout")
+            messages.info(request, "Dang chuyen den cong VNPAY de thanh toan.")
+            return redirect(vnpay_url)
+
         messages.success(request, f"Đặt hàng thành công. Mã đơn #{order.id}")
         success_url = reverse("shop:checkout_success")
         return redirect(f"{success_url}?order_id={order.id}")
+
+    payment_methods = PAYMENT_METHODS
+    if not is_vnpay_configured():
+        payment_methods = [
+            method for method in PAYMENT_METHODS if method["value"] != PAYMENT_METHOD_VNPAY
+        ]
+        if selected_payment_method == PAYMENT_METHOD_VNPAY:
+            selected_payment_method = PAYMENT_METHOD_COD
 
     return render(
         request,
         "shop/checkout.html",
         {
             "addresses": addresses,
-            "payment_methods": PAYMENT_METHODS,
+            "payment_methods": payment_methods,
             "selected_payment_method": selected_payment_method,
             "bank_transfer": build_bank_transfer_info(summary["total"], request.user.username),
             "cart_items": cart_items,
@@ -175,7 +196,7 @@ def orders(request):
 def cancel_order(request, order_id):
     order = get_object_or_404(Order.objects.prefetch_related("items"), id=order_id, user=request.user)
     if order.status != Order.STATUS_PENDING:
-        messages.error(request, "Chá»‰ cÃ³ thá»ƒ há»§y Ä‘Æ¡n Ä‘ang Pending.")
+        messages.error(request, "Chỉ có thể hủy đơn đang Pending.")
         return redirect("shop:orders")
 
     with transaction.atomic():
@@ -186,7 +207,7 @@ def cancel_order(request, order_id):
                 item.product.stock += item.quantity
                 item.product.save(update_fields=["stock"])
 
-    messages.success(request, "ÄÃ£ há»§y Ä‘Æ¡n hÃ ng.")
+    messages.success(request, "Đã hủy đơn hàng.")
     return redirect("shop:orders")
 
 
@@ -289,3 +310,66 @@ def checkout_success(request):
     if order_id.isdigit():
         order = Order.objects.filter(id=int(order_id), user=request.user).first()
     return render(request, "shop/checkout_success.html", {"order": order})
+
+
+@login_required
+@require_GET
+def vnpay_return(request):
+    params = request.GET.dict()
+    order_id = params.get("vnp_TxnRef", "")
+    order = None
+    if order_id.isdigit():
+        order = Order.objects.filter(id=int(order_id), user=request.user).first()
+
+    if not params or not verify_vnpay_signature(params):
+        messages.error(request, "Chu ky VNPAY khong hop le.")
+    elif not order:
+        messages.error(request, "Khong tim thay don hang can xac nhan.")
+    else:
+        response_code = params.get("vnp_ResponseCode", "")
+        txn_status = params.get("vnp_TransactionStatus", "")
+        if response_code == "00" and (txn_status in ("", "00")):
+            if order.status == Order.STATUS_PENDING:
+                order.status = Order.STATUS_PROCESSING
+                order.save(update_fields=["status"])
+            messages.success(request, "Thanh toan VNPAY thanh cong.")
+        else:
+            messages.warning(request, "Thanh toan VNPAY that bai hoac bi huy.")
+
+    success_url = reverse("shop:checkout_success")
+    if order_id:
+        return redirect(f"{success_url}?order_id={order_id}")
+    return redirect(success_url)
+
+
+@require_GET
+def vnpay_ipn(request):
+    params = request.GET.dict()
+    if not params or not verify_vnpay_signature(params):
+        return JsonResponse({"RspCode": "97", "Message": "Invalid signature"})
+
+    order_id = params.get("vnp_TxnRef", "")
+    if not order_id.isdigit():
+        return JsonResponse({"RspCode": "01", "Message": "Order not found"})
+
+    order = Order.objects.filter(id=int(order_id)).first()
+    if not order:
+        return JsonResponse({"RspCode": "01", "Message": "Order not found"})
+
+    try:
+        received_amount = int(params.get("vnp_Amount", "0"))
+    except (TypeError, ValueError):
+        return JsonResponse({"RspCode": "04", "Message": "Invalid amount"})
+
+    expected_amount = int(order.final_amount or 0) * 100
+    if received_amount != expected_amount:
+        return JsonResponse({"RspCode": "04", "Message": "Invalid amount"})
+
+    response_code = params.get("vnp_ResponseCode", "")
+    txn_status = params.get("vnp_TransactionStatus", "")
+    if response_code == "00" and (txn_status in ("", "00")):
+        if order.status == Order.STATUS_PENDING:
+            order.status = Order.STATUS_PROCESSING
+            order.save(update_fields=["status"])
+
+    return JsonResponse({"RspCode": "00", "Message": "Confirm Success"})

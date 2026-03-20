@@ -25,10 +25,10 @@ python manage.py runserver 0.0.0.0:8000
 
 2. Mo terminal khac va chay tunnel:
 
-```cmd
 cd /d %USERPROFILE%\Downloads
 cloudflared.exe tunnel --url http://127.0.0.1:8000
-```
+
+
 
 3. Mo trang admin bang link `https://xxxxx.trycloudflare.com`.
    Khi mo tu domain tunnel, QR se tu dong tao link public theo tunnel (khong bi dính localhost/LAN).

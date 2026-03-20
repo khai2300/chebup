@@ -11,9 +11,11 @@ from .models import CartItem, OrderTraceToken, Promotion
 
 PAYMENT_METHOD_COD = "COD"
 PAYMENT_METHOD_BANK_TRANSFER = "Bank Transfer"
+PAYMENT_METHOD_VNPAY = "VNPAY"
 PAYMENT_METHODS = [
     {"value": PAYMENT_METHOD_COD, "label": "Thanh toán khi nhận hàng (COD)"},
     {"value": PAYMENT_METHOD_BANK_TRANSFER, "label": "Thanh toán online (Ngân hàng)"},
+    {"value": PAYMENT_METHOD_VNPAY, "label": "Thanh toán qua VNPAY"},
 ]
 PAYMENT_METHOD_VALUES = {method["value"] for method in PAYMENT_METHODS}
 

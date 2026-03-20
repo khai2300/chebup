@@ -80,6 +80,29 @@
             </div>
           </div>
         </div>
+
+        <div
+          id="vnpayInfo"
+          class="checkout-qr {% if selected_payment_method != 'VNPAY' %}d-none{% endif %}"
+        >
+          <div class="checkout-qr-head">
+            <div>
+              <h6>Thanh toan VNPAY</h6>
+              <p class="mb-0">Sau khi bam xac nhan, he thong se chuyen den cong VNPAY.</p>
+            </div>
+          </div>
+          <div class="checkout-qr-body">
+            <div class="checkout-qr-form">
+              <div class="checkout-bank-info">
+                <div><strong>Cong thanh toan:</strong> VNPAY</div>
+                <div><strong>Hinh thuc:</strong> The noi dia / QR / Ngan hang</div>
+              </div>
+            </div>
+            <div class="checkout-qr-preview">
+              <div class="checkout-qr-note">Ban se duoc chuyen huong sau khi dat hang.</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -126,12 +149,18 @@
     const bankMethodValue = "{{ bank_transfer.method_value }}";
     const bankNameInput = document.querySelector('input[name="bank_transfer_name"]');
     const bankPhoneInput = document.querySelector('input[name="bank_transfer_phone"]');
+    const vnpayInfo = document.getElementById("vnpayInfo");
+    const vnpayMethodValue = "VNPAY";
     if (!radios.length || !bankInfo) return;
 
     const toggleBankInfo = () => {
       const checked = document.querySelector('input[name="payment_method"]:checked');
       const isBank = checked && checked.value === bankMethodValue;
       bankInfo.classList.toggle("d-none", !isBank);
+      if (vnpayInfo) {
+        const isVnpay = checked && checked.value === vnpayMethodValue;
+        vnpayInfo.classList.toggle("d-none", !isVnpay);
+      }
       [bankNameInput, bankPhoneInput].forEach((input) => {
         if (!input) return;
         if (isBank) {

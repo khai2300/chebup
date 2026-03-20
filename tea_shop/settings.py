@@ -14,6 +14,7 @@ import os
 import socket
 from pathlib import Path
 
+import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -53,6 +54,13 @@ BANK_TRANSFER_ACCOUNT_NAME = os.environ.get("BANK_TRANSFER_ACCOUNT_NAME", "NGUYE
 BANK_TRANSFER_ACCOUNT_NUMBER = os.environ.get("BANK_TRANSFER_ACCOUNT_NUMBER", "19037577368017").strip()
 BANK_TRANSFER_NOTE_PREFIX = os.environ.get("BANK_TRANSFER_NOTE_PREFIX", "THANH TOAN").strip()
 
+VNPAY_TMN_CODE = os.environ.get("VNPAY_TMN_CODE", "").strip()
+VNPAY_HASH_SECRET = os.environ.get("VNPAY_HASH_SECRET", "").strip()
+VNPAY_URL = os.environ.get("VNPAY_URL", "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html").strip()
+VNPAY_RETURN_URL = os.environ.get("VNPAY_RETURN_URL", "").strip()
+VNPAY_VERSION = os.environ.get("VNPAY_VERSION", "2.1.0").strip()
+VNPAY_LOCALE = os.environ.get("VNPAY_LOCALE", "vn").strip()
+
 EMAIL_BACKEND = os.environ.get(
     "EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
@@ -64,6 +72,8 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "").strip()
 EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@chebup.local").strip()
 ORDER_NOTIFY_TO = _env_list("ORDER_NOTIFY_TO", "")
+
+# Render.com automatic hostname handling removed — manage hosts via env vars
 
 if DEBUG:
     # Dev convenience: allow localhost + current LAN IP so phone can open QR links.
@@ -132,6 +142,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -166,10 +177,10 @@ WSGI_APPLICATION = 'tea_shop.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+    )
 }
 
 
@@ -210,6 +221,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'django_ui' / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
