@@ -11,6 +11,9 @@ from .models import ChatMessage, ChatSession
 from .services.chat_ai import generate_chat_reply, quick_replies, suggest_products_for_chat
 
 
+DEFAULT_CHAT_TITLE = "Trò chuyện hỗ trợ"
+
+
 @login_required
 def chat_view(request):
     session_obj = _get_or_create_chat_session(request.user)
@@ -37,7 +40,7 @@ def chat_view(request):
 def chat_api(request):
     message = request.POST.get("message", "").strip()
     if not message:
-        return JsonResponse({"response": "Ban hay nhap noi dung can ho tro.", "mode": "validation"}, status=400)
+        return JsonResponse({"response": "Bạn hãy nhập nội dung cần hỗ trợ.", "mode": "validation"}, status=400)
 
     session_obj = _get_or_create_chat_session(request.user)
     conversation = list(session_obj.messages.exclude(role=ChatMessage.ROLE_SYSTEM).values("role", "content"))
@@ -46,10 +49,9 @@ def chat_api(request):
     response, mode = generate_chat_reply(request.user, conversation, message)
     ChatMessage.objects.create(session=session_obj, role=ChatMessage.ROLE_ASSISTANT, content=response)
 
-    # None -> lay limit tu env trong service, de mo rong de dang sau nay.
     suggested_products = suggest_products_for_chat(message, limit=None)
-
     products_payload = []
+
     for product in suggested_products:
         image_url = ""
         if product.image:
@@ -74,7 +76,7 @@ def chat_api(request):
             }
         )
 
-    if session_obj.title == "Tro chuyen ho tro" and message:
+    if session_obj.title == DEFAULT_CHAT_TITLE and message:
         session_obj.title = message[:80]
         session_obj.save(update_fields=["title", "updated_at"])
 
@@ -92,7 +94,7 @@ def chat_api(request):
 @require_POST
 def chat_reset(request):
     ChatSession.objects.filter(user=request.user, is_active=True).update(is_active=False)
-    ChatSession.objects.create(user=request.user, title="Tro chuyen ho tro", is_active=True)
+    ChatSession.objects.create(user=request.user, title=DEFAULT_CHAT_TITLE, is_active=True)
     return JsonResponse({"ok": True})
 
 
@@ -100,4 +102,4 @@ def _get_or_create_chat_session(user):
     session_obj = ChatSession.objects.filter(user=user, is_active=True).first()
     if session_obj:
         return session_obj
-    return ChatSession.objects.create(user=user, title="Tro chuyen ho tro", is_active=True)
+    return ChatSession.objects.create(user=user, title=DEFAULT_CHAT_TITLE, is_active=True)

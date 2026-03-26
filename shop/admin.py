@@ -9,7 +9,9 @@ from .models import (
     Order,
     OrderTraceToken,
     OrderItem,
+    ProcessingStep,
     Product,
+    ProductionFacility,
     ProductionZone,
     Promotion,
     UserProfile,
@@ -33,6 +35,20 @@ class ProductAdmin(admin.ModelAdmin):
 class ProductionZoneAdmin(admin.ModelAdmin):
     list_display = ("id", "code", "name", "province", "latitude", "longitude")
     search_fields = ("code", "name", "province")
+
+
+@admin.register(ProductionFacility)
+class ProductionFacilityAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "zone", "phone", "manager_name")
+    list_filter = ("zone",)
+    search_fields = ("name", "zone__name", "zone__code", "address", "manager_name")
+
+
+@admin.register(ProcessingStep)
+class ProcessingStepAdmin(admin.ModelAdmin):
+    list_display = ("id", "product", "step_order", "title", "created_at")
+    list_filter = ("product__category", "product")
+    search_fields = ("product__name", "title", "description")
 
 
 @admin.register(Address)

@@ -1,4 +1,4 @@
-{% extends "shop/base.html" %}
+﻿{% extends "shop/base.html" %}
 {% block title %}Lịch sử đơn hàng{% endblock %}
 {% block content %}
 <h3 class="mb-3">Lịch sử đơn hàng</h3>
@@ -8,13 +8,28 @@
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
         <div>
-          <h5 class="mb-1">Don #{{ order.id }}</h5>
+          <h5 class="mb-1">Đơn #{{ order.id }}</h5>
           <p class="mb-1 small text-muted">{{ order.created_at|date:"d/m/Y H:i" }}</p>
           <p class="mb-1">{{ order.address.full_address }}</p>
-          <span class="badge text-bg-secondary">{{ order.status }}</span>
+          {% if order.status == "Payment Failed" %}
+            <span class="badge text-bg-danger">{{ order.customer_status_label }}</span>
+          {% else %}
+            <span class="badge text-bg-secondary">{{ order.customer_status_label }}</span>
+          {% endif %}
         </div>
+
         <div class="text-end">
-          <p class="tea-price mb-2">{{ order.final_amount|floatformat:0 }} VND</p>
+          {% if order.status == "Payment Failed" %}
+            <p class="tea-price mb-2">0 VND <small class="text-muted">(đã trả kho)</small></p>
+          {% else %}
+            <p class="tea-price mb-2">{{ order.final_amount|floatformat:0 }} VND</p>
+          {% endif %}
+
+          <div class="d-flex gap-2 justify-content-end flex-wrap mb-2">
+            <a href="{% url 'shop:order_detail' order.id %}" class="btn btn-outline-success btn-sm">Xem chi tiết</a>
+            <a href="{% url 'shop:order_invoice' order.id %}" class="btn btn-success btn-sm">Xem hóa đơn</a>
+          </div>
+
           {% if order.status == "Pending" %}
             <form method="post" action="{% url 'shop:cancel_order' order.id %}">
               {% csrf_token %}
@@ -23,10 +38,11 @@
           {% endif %}
         </div>
       </div>
+
       <hr>
       {% for item in order.items.all %}
         <div class="d-flex justify-content-between small mb-1">
-          <span>{{ item.product_name }} x {{ item.quantity }}</span>
+          <span>{{ item.product_name }} - {{ item.weight_label }} x {{ item.quantity }}</span>
           <span>{{ item.subtotal|floatformat:0 }} VND</span>
         </div>
       {% endfor %}
@@ -34,7 +50,7 @@
   </div>
 {% empty %}
   <div class="empty-state">
-    <h5>Bạn chưa có đơn nào</h5>
+    <h5>Bạn chưa có đơn hàng nào</h5>
     <p class="mb-3">Hãy chọn sản phẩm chè búp và đặt đơn ngay.</p>
     <a href="{% url 'shop:home' %}" class="btn btn-success">Mua ngay</a>
   </div>

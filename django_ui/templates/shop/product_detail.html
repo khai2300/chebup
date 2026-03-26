@@ -1,4 +1,4 @@
-{% extends "shop/base.html" %}
+﻿{% extends "shop/base.html" %}
 {% block title %}{{ product.name }}{% endblock %}
 {% block content %}
 <section class="row g-4 mb-4">
@@ -17,8 +17,15 @@
     <span class="badge text-bg-success mb-2">{{ product.category.name }}</span>
     <h2 class="mb-3">{{ product.name }}</h2>
     <p class="text-muted">{{ product.description }}</p>
-    <h4 class="tea-price mb-3">{{ product.price|floatformat:0 }} VND</h4>
+    <h4 class="tea-price mb-3">{{ product.price|floatformat:0 }} VND / kg</h4>
     <p class="mb-3">Tồn kho còn: <strong>{{ product.stock }}</strong></p>
+
+    {% if product.stock <= 0 %}
+      <div class="alert alert-warning" role="alert">
+        Sản phẩm này đã hết hàng, vui lòng chờ cập nhật thêm.
+      </div>
+    {% endif %}
+
     {% if product.source_zone or product.map_link %}
       <div class="card border-success-subtle mb-3">
         <div class="card-body py-2">
@@ -48,12 +55,30 @@
         </div>
       </div>
     {% endif %}
-    <form method="post" action="{% url 'shop:add_to_cart' product.id %}" class="d-flex gap-2 mb-2">
-      {% csrf_token %}
-      <input name="quantity" type="number" class="form-control" value="1" min="1" max="{{ product.stock }}" style="max-width:100px">
-      <button class="btn btn-success">Thêm vào giỏ</button>
-      <a href="{% url 'shop:cart' %}" class="btn btn-outline-success">Xem giỏ</a>
-    </form>
+
+    {% if product.stock > 0 %}
+      <form method="post" action="{% url 'shop:add_to_cart' product.id %}" class="row g-2 mb-2 align-items-end">
+        {% csrf_token %}
+        <div class="col-sm-4">
+          <label class="form-label mb-1">Quy cách cân</label>
+          <select name="weight_grams" class="form-select">
+            {% for option in weight_options %}
+              <option value="{{ option.value }}">{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label mb-1">Số lượng</label>
+          <input name="quantity" type="number" class="form-control" value="1" min="1" max="{{ product.stock }}">
+        </div>
+        <div class="col-sm-5 d-flex gap-2">
+          <button class="btn btn-success">Thêm vào giỏ</button>
+          <a href="{% url 'shop:cart' %}" class="btn btn-outline-success">Xem giỏ</a>
+        </div>
+      </form>
+    {% else %}
+      <button class="btn btn-secondary" disabled>Hết hàng - chờ cập nhật thêm</button>
+    {% endif %}
   </div>
 </section>
 

@@ -24,13 +24,13 @@
       const image = document.createElement("img");
       image.className = "chat-product-thumb";
       image.src = product.image_url;
-      image.alt = product.name || "San pham";
+      image.alt = product.name || "Sản phẩm";
       image.loading = "lazy";
       item.appendChild(image);
     } else {
       const placeholder = document.createElement("div");
       placeholder.className = "chat-product-thumb placeholder";
-      placeholder.textContent = "No image";
+      placeholder.textContent = "Không có ảnh";
       item.appendChild(placeholder);
     }
 
@@ -39,7 +39,7 @@
 
     const title = document.createElement("div");
     title.className = "chat-product-title";
-    title.textContent = product.name || "San pham";
+    title.textContent = product.name || "Sản phẩm";
     body.appendChild(title);
 
     if (product.price_text) {
@@ -52,8 +52,8 @@
     if (product.category || Number.isFinite(product.stock)) {
       const meta = document.createElement("div");
       meta.className = "chat-product-desc";
-      const categoryText = product.category ? `Danh muc: ${product.category}` : "";
-      const stockText = Number.isFinite(product.stock) ? `Ton: ${product.stock}` : "";
+      const categoryText = product.category ? `Danh mục: ${product.category}` : "";
+      const stockText = Number.isFinite(product.stock) ? `Tồn: ${product.stock}` : "";
       meta.textContent = [categoryText, stockText].filter(Boolean).join(" | ");
       if (meta.textContent) body.appendChild(meta);
     }
@@ -80,10 +80,10 @@
       const addBtn = document.createElement("button");
       addBtn.type = "button";
       addBtn.className = "btn btn-success btn-sm";
-      addBtn.textContent = "Them vao gio";
+      addBtn.textContent = "Thêm vào giỏ";
       addBtn.addEventListener("click", async () => {
         addBtn.disabled = true;
-        addBtn.textContent = "Dang them...";
+        addBtn.textContent = "Đang thêm...";
         const payload = new FormData();
         payload.append("quantity", "1");
         payload.append("csrfmiddlewaretoken", csrfToken);
@@ -94,9 +94,9 @@
             headers: { "X-Requested-With": "XMLHttpRequest" }
           });
           if (!response.ok) throw new Error("add_to_cart_failed");
-          addBtn.textContent = "Da them";
+          addBtn.textContent = "Đã thêm";
         } catch (_error) {
-          addBtn.textContent = "Thu lai";
+          addBtn.textContent = "Thử lại";
           addBtn.disabled = false;
         }
       });
@@ -144,7 +144,7 @@
       return;
     }
     modeBadge.className = "badge text-bg-warning text-dark";
-    modeBadge.textContent = "Fallback mode";
+    modeBadge.textContent = "Chế độ dự phòng";
   };
 
   const sendMessage = async (message) => {

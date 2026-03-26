@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import hmac
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
@@ -44,7 +44,7 @@ def build_vnpay_payment_url(request, order):
         "vnp_Amount": amount,
         "vnp_CurrCode": settings.VNPAY_CURRENCY_CODE,
         "vnp_TxnRef": txn_ref,
-        "vnp_OrderInfo": f"Thanh toan don hang {txn_ref}",
+        "vnp_OrderInfo": f"Thanh toán đơn hàng {txn_ref}",
         "vnp_OrderType": "other",
         "vnp_Locale": settings.VNPAY_LOCALE,
         "vnp_ReturnUrl": settings.VNPAY_RETURN_URL,

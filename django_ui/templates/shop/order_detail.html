@@ -1,0 +1,94 @@
+﻿{% extends "shop/base.html" %}
+
+{% block title %}Chi tiết đơn hàng #{{ order.id }} - Chè Búp{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h4 class="mb-0">Chi tiết đơn hàng #{{ order.id }}</h4>
+      <div class="d-flex gap-2">
+        <a href="{% url 'shop:orders' %}" class="btn btn-outline-secondary btn-sm">Quay lại danh sách</a>
+        <a href="{% url 'shop:order_invoice' order.id %}" class="btn btn-success btn-sm">Xem hóa đơn</a>
+      </div>
+    </div>
+
+    <div class="card-body p-4">
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <h5>Thông tin người nhận</h5>
+          <p class="mb-1"><strong>Tên:</strong> {{ order.address.recipient_name }}</p>
+          <p class="mb-1"><strong>Điện thoại:</strong> {{ order.address.phone }}</p>
+          <p class="mb-1"><strong>Địa chỉ:</strong> {{ order.address.street }}, {{ order.address.ward }}, {{ order.address.district }}, {{ order.address.city }}</p>
+        </div>
+
+        <div class="col-md-6">
+          <h5>Thông tin đơn hàng</h5>
+          <p class="mb-1"><strong>Mã đơn hàng:</strong> #{{ order.id }}</p>
+          <p class="mb-1"><strong>Ngày đặt:</strong> {{ order.created_at|date:"d/m/Y H:i" }}</p>
+          {% if order.status == "Payment Failed" %}
+            <p class="mb-1"><strong>Trạng thái:</strong> <span class="badge bg-danger">{{ order.customer_status_label }}</span></p>
+          {% else %}
+            <p class="mb-1"><strong>Trạng thái:</strong> <span class="badge bg-info text-dark">{{ order.customer_status_label }}</span></p>
+          {% endif %}
+          <p class="mb-1"><strong>Thanh toán:</strong> {{ order.get_payment_method_display|default:order.payment_method }}</p>
+        </div>
+      </div>
+
+      <h5>Sản phẩm trong đơn</h5>
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Sản phẩm</th>
+              <th scope="col" class="text-end">Đơn giá</th>
+              <th scope="col" class="text-center">Số lượng</th>
+              <th scope="col" class="text-end">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in order.items.all %}
+            <tr>
+              <td>{{ item.product_name }} <span class="text-muted">({{ item.weight_label }})</span></td>
+              <td class="text-end">{{ item.unit_price|floatformat:0 }} VND</td>
+              <td class="text-center">{{ item.quantity }}</td>
+              <td class="text-end">{{ item.subtotal|floatformat:0 }} VND</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" class="text-end"><strong>Tổng tiền hàng</strong></td>
+              <td class="text-end">{{ order.total_amount|floatformat:0 }} VND</td>
+            </tr>
+            <tr>
+              <td colspan="3" class="text-end"><strong>Giảm giá (khuyến mãi)</strong></td>
+              <td class="text-end">-{{ order.discount_amount|floatformat:0 }} VND</td>
+            </tr>
+            <tr class="table-light fs-5">
+              <td colspan="3" class="text-end"><strong>Tổng thanh toán</strong></td>
+              <td class="text-end">
+                {% if order.status == "Payment Failed" %}
+                  <strong>0 VND</strong>
+                {% else %}
+                  <strong>{{ order.final_amount|floatformat:0 }} VND</strong>
+                {% endif %}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="mt-4 text-center">
+        <a href="{% url 'shop:order_trace_qr' order.id %}" target="_blank" class="btn btn-secondary">Xem QR truy xuất</a>
+        {% if order.status == "Pending" %}
+          <form action="{% url 'shop:cancel_order' order.id %}" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn hủy đơn hàng này?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Hủy đơn hàng</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

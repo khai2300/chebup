@@ -42,7 +42,7 @@ def send_order_notification_email(order):
         item_lines.append(
             f"- {item.product_name}: {item.quantity} x {_format_currency(item.unit_price)} VND = {_format_currency(item.subtotal)} VND"
         )
-    items_block = "\n".join(item_lines) if item_lines else "- (khong co san pham)"
+    items_block = "\n".join(item_lines) if item_lines else "- (kh?ng c? s?n ph?m)"
 
     address = order.address
     shipping_address = (
@@ -53,31 +53,31 @@ def send_order_notification_email(order):
     recipient_name = (getattr(address, "recipient_name", "") or "").strip() if address else ""
     recipient_phone = (getattr(address, "phone", "") or "").strip() if address else ""
 
-    subject = f"[Che Bup] Xac nhan don hang #{order.id}"
+    subject = f"[Ch? B?p] X?c nh?n ??n h?ng #{order.id}"
     text_body = (
-        "Don hang cua ban da duoc ghi nhan.\n\n"
-        f"Ma don: #{order.id}\n"
-        f"Trang thai: {order.status}\n"
-        f"Phuong thuc thanh toan: {order.payment_method}\n"
-        f"Tong thanh toan: {_format_currency(order.final_amount)} VND\n"
-        f"Dia chi giao hang: {shipping_address}\n"
-        f"Ten nguoi nhan: {recipient_name or 'N/A'}\n"
-        f"So dien thoai: {recipient_phone or 'N/A'}\n\n"
-        f"Danh sach san pham:\n{items_block}\n\n"
-        "Cam on ban da dat hang tai Che Bup Thai Nguyen."
+        "??n h?ng c?a b?n ?? ???c ghi nh?n.\n\n"
+        f"M? ??n: #{order.id}\n"
+        f"Tr?ng th?i: {order.status}\n"
+        f"Ph??ng th?c thanh to?n: {order.payment_method}\n"
+        f"T?ng thanh to?n: {_format_currency(order.final_amount)} VND\n"
+        f"??a ch? giao h?ng: {shipping_address}\n"
+        f"T?n ng??i nh?n: {recipient_name or 'N/A'}\n"
+        f"S? ?i?n tho?i: {recipient_phone or 'N/A'}\n\n"
+        f"Danh s?ch s?n ph?m:\n{items_block}\n\n"
+        "C?m ?n b?n ?? ??t h?ng t?i Ch? B?p Th?i Nguy?n."
     )
     html_body = (
-        "<h3>Xac nhan don hang</h3>"
-        f"<p><strong>Ma don:</strong> #{order.id}</p>"
-        f"<p><strong>Trang thai:</strong> {order.status}</p>"
-        f"<p><strong>Phuong thuc thanh toan:</strong> {order.payment_method}</p>"
-        f"<p><strong>Tong thanh toan:</strong> {_format_currency(order.final_amount)} VND</p>"
-        f"<p><strong>Dia chi giao hang:</strong> {shipping_address}</p>"
-        f"<p><strong>Ten nguoi nhan:</strong> {recipient_name or 'N/A'}</p>"
-        f"<p><strong>So dien thoai:</strong> {recipient_phone or 'N/A'}</p>"
-        "<p><strong>Danh sach san pham:</strong></p>"
+        "<h3>X?c nh?n ??n h?ng</h3>"
+        f"<p><strong>M? ??n:</strong> #{order.id}</p>"
+        f"<p><strong>Tr?ng th?i:</strong> {order.status}</p>"
+        f"<p><strong>Ph??ng th?c thanh to?n:</strong> {order.payment_method}</p>"
+        f"<p><strong>T?ng thanh to?n:</strong> {_format_currency(order.final_amount)} VND</p>"
+        f"<p><strong>??a ch? giao h?ng:</strong> {shipping_address}</p>"
+        f"<p><strong>T?n ng??i nh?n:</strong> {recipient_name or 'N/A'}</p>"
+        f"<p><strong>S? ?i?n tho?i:</strong> {recipient_phone or 'N/A'}</p>"
+        "<p><strong>Danh s?ch s?n ph?m:</strong></p>"
         f"<pre>{items_block}</pre>"
-        "<p>Cam on ban da dat hang tai Che Bup Thai Nguyen.</p>"
+        "<p>C?m ?n b?n ?? ??t h?ng t?i Ch? B?p Th?i Nguy?n.</p>"
     )
 
     message = EmailMultiAlternatives(

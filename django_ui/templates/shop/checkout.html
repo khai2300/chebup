@@ -87,19 +87,19 @@
         >
           <div class="checkout-qr-head">
             <div>
-              <h6>Thanh toan VNPAY</h6>
-              <p class="mb-0">Sau khi bam xac nhan, he thong se chuyen den cong VNPAY.</p>
+              <h6>Thanh toán VNPAY</h6>
+              <p class="mb-0">Sau khi bấm xác nhận, hệ thống sẽ chuyển đến cổng VNPAY.</p>
             </div>
           </div>
           <div class="checkout-qr-body">
             <div class="checkout-qr-form">
               <div class="checkout-bank-info">
-                <div><strong>Cong thanh toan:</strong> VNPAY</div>
-                <div><strong>Hinh thuc:</strong> The noi dia / QR / Ngan hang</div>
+                <div><strong>Cổng thanh toán:</strong> VNPAY</div>
+                <div><strong>Hình thức:</strong> Thẻ nội địa / QR / Ngân hàng</div>
               </div>
             </div>
             <div class="checkout-qr-preview">
-              <div class="checkout-qr-note">Ban se duoc chuyen huong sau khi dat hang.</div>
+              <div class="checkout-qr-note">Bạn sẽ được chuyển hướng sau khi đặt hàng.</div>
             </div>
           </div>
         </div>
@@ -115,7 +115,7 @@
       <div class="checkout-card-body">
         {% for item in cart_items %}
           <div class="d-flex justify-content-between small mb-2">
-            <span>{{ item.product.name }} x {{ item.quantity }}</span>
+            <span>{{ item.product.name }} - {{ item.weight_label }} x {{ item.quantity }}</span>
             <span>{{ item.subtotal|floatformat:0 }} VND</span>
           </div>
         {% endfor %}

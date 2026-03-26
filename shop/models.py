@@ -1,4 +1,4 @@
-from decimal import Decimal
+﻿from decimal import Decimal
 import uuid
 
 from django.conf import settings
@@ -85,20 +85,30 @@ class CartItem(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cart_items")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="cart_items")
     quantity = models.PositiveIntegerField(default=1)
+    weight_grams = models.PositiveIntegerField(default=100)
+    weight_label = models.CharField(max_length=40, default="1 láº¡ng (100g)")
+    weight_multiplier = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal("0.10"))
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["user", "product"], name="unique_user_product_cartitem")
+            models.UniqueConstraint(
+                fields=["user", "product", "weight_grams"],
+                name="unique_user_product_weight_cartitem",
+            )
         ]
         ordering = ["-created_at"]
 
     @property
+    def unit_price(self):
+        return self.product.price * self.weight_multiplier
+
+    @property
     def subtotal(self):
-        return self.product.price * self.quantity
+        return self.unit_price * self.quantity
 
     def __str__(self):
-        return f"{self.user.username} - {self.product.name} x {self.quantity}"
+        return f"{self.user.username} - {self.product.name} {self.weight_label} x {self.quantity}"
 
 
 class Promotion(models.Model):
@@ -156,11 +166,20 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.id}"
 
+    @property
+    def customer_status_label(self):
+        if self.status == self.STATUS_PAYMENT_FAILED:
+            return "Thanh toán thất bại - đã trả hàng về kho"
+        return self.get_status_display()
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
     product_name = models.CharField(max_length=255)
+    weight_grams = models.PositiveIntegerField(default=100)
+    weight_label = models.CharField(max_length=40, default="1 láº¡ng (100g)")
+    weight_multiplier = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal("0.10"))
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     quantity = models.PositiveIntegerField(default=1)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
@@ -190,6 +209,44 @@ class ProductionZone(models.Model):
         return f"{self.name} ({self.code})"
 
 
+class ProductionFacility(models.Model):
+    zone = models.ForeignKey(
+        ProductionZone,
+        on_delete=models.CASCADE,
+        related_name="facilities",
+    )
+    name = models.CharField(max_length=180)
+    address = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    manager_name = models.CharField(max_length=120, blank=True)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["zone__province", "zone__name", "name"]
+
+    def __str__(self):
+        return f"{self.name} - {self.zone.code}"
+
+
+class ProcessingStep(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="processing_steps",
+    )
+    step_order = models.PositiveIntegerField(default=1)
+    title = models.CharField(max_length=160)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["step_order", "id"]
+
+    def __str__(self):
+        return f"{self.product.name} - B{self.step_order}: {self.title}"
+
+
 class OrderTraceToken(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="trace_token")
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -204,7 +261,7 @@ class OrderTraceToken(models.Model):
 
 class ChatSession(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_sessions")
-    title = models.CharField(max_length=120, default="Tro chuyen ho tro")
+    title = models.CharField(max_length=120, default="Trò chuyện hỗ trợ")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -236,3 +293,4 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.role}: {self.content[:60]}"
+

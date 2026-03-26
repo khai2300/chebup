@@ -9,9 +9,9 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
-from .models import Category, Product
+from .models import Category, ProcessingStep, Product
 from .services.seed import ensure_seed_data
-from .views_utils import build_public_url
+from .views_utils import WEIGHT_OPTIONS, build_public_url
 
 NEWS_POSTS = [
     {
@@ -90,6 +90,7 @@ def home(request):
             "categories": categories,
             "q": q,
             "selected_category": selected_category,
+            "weight_options": WEIGHT_OPTIONS,
         },
     )
 
@@ -121,6 +122,7 @@ def product_detail(request, product_id):
         {
             "product": product,
             "related_products": related_products,
+            "weight_options": WEIGHT_OPTIONS,
         },
     )
 
@@ -153,6 +155,9 @@ def product_trace_qr(request, product_id):
 def trace_product(request, product_id):
     product = get_object_or_404(Product.objects.select_related("source_zone", "category"), id=product_id)
     zone = product.source_zone
+    processing_steps = list(
+        ProcessingStep.objects.filter(product=product).order_by("step_order", "id")
+    )
     if zone:
         zone_data = {
             "name": zone.name,
@@ -171,6 +176,7 @@ def trace_product(request, product_id):
         {
             "product": product,
             "zone": zone_data,
+            "processing_steps": processing_steps,
         },
     )
 

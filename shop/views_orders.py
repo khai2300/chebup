@@ -1,7 +1,7 @@
-import json
+﻿import json
 import logging
-from urllib.parse import urlencode
 from io import BytesIO
+from urllib.parse import urlencode
 
 import qrcode
 from django.conf import settings
@@ -17,8 +17,8 @@ from .models import Address, CartItem, Order, OrderItem, OrderTraceToken
 from .services.notifications import send_order_notification_email
 from .services.vnpay import build_vnpay_payment_url, is_vnpay_configured, verify_vnpay_signature
 from .views_utils import (
-    PAYMENT_METHOD_COD,
     PAYMENT_METHOD_BANK_TRANSFER,
+    PAYMENT_METHOD_COD,
     PAYMENT_METHOD_VNPAY,
     PAYMENT_METHODS,
     PAYMENT_METHOD_VALUES,
@@ -29,6 +29,29 @@ from .views_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _restore_order_items_stock(order):
+    for item in order.items.select_related("product"):
+        if item.product:
+            item.product.stock += item.quantity
+            item.product.save(update_fields=["stock"])
+
+
+def _mark_order_payment_failed(order):
+    with transaction.atomic():
+        locked_order = (
+            Order.objects.select_for_update()
+            .prefetch_related("items__product")
+            .filter(id=order.id)
+            .first()
+        )
+        if not locked_order or locked_order.status != Order.STATUS_PENDING:
+            return False
+        _restore_order_items_stock(locked_order)
+        locked_order.status = Order.STATUS_PAYMENT_FAILED
+        locked_order.save(update_fields=["status"])
+        return True
 
 
 @login_required
@@ -72,12 +95,12 @@ def checkout(request):
                 query["promo_code"] = promo_code
             return redirect(f"{reverse('shop:checkout')}?{urlencode(query)}")
         if payment_method == PAYMENT_METHOD_VNPAY and not is_vnpay_configured():
-            messages.error(request, "VNPAY chua duoc cau hinh. Vui long lien he admin.")
+            messages.error(request, "VNPAY chưa được cấu hình. Vui lòng liên hệ admin.")
             return redirect("shop:checkout")
 
         for item in cart_items:
-            if item.quantity > item.product.stock:
-                messages.error(request, f"Sản phẩm {item.product.name} không đủ tồn kho.")
+            if item.quantity <= 0:
+                messages.error(request, f"Sản phẩm {item.product.name} có số lượng không hợp lệ.")
                 return redirect("shop:cart")
 
         with transaction.atomic():
@@ -99,17 +122,18 @@ def checkout(request):
                     order=order,
                     product=item.product,
                     product_name=item.product.name,
-                    unit_price=item.product.price,
+                    weight_grams=item.weight_grams,
+                    weight_label=item.weight_label,
+                    weight_multiplier=item.weight_multiplier,
+                    unit_price=item.unit_price,
                     quantity=item.quantity,
-                    subtotal=item.product.price * item.quantity,
+                    subtotal=item.subtotal,
                     source_zone_name=zone.name if zone else "",
                     source_zone_code=zone.code if zone else "",
                     source_zone_province=zone.province if zone else "",
                     source_zone_latitude=zone.latitude if zone else None,
                     source_zone_longitude=zone.longitude if zone else None,
                 )
-                item.product.stock -= item.quantity
-                item.product.save(update_fields=["stock"])
 
             CartItem.objects.filter(user=request.user).delete()
 
@@ -125,10 +149,8 @@ def checkout(request):
             email_reason = "send_failed"
             logger.exception("Failed to send order email for order_id=%s", order.id)
             if getattr(settings, "DEBUG", False):
-                messages.warning(
-                    request,
-                    f"Gui email that bai: {exc}",
-                )
+                messages.warning(request, f"Gửi email thất bại: {exc}")
+
         if not email_sent:
             if email_reason == "smtp_not_configured":
                 messages.info(
@@ -149,9 +171,9 @@ def checkout(request):
         if payment_method == PAYMENT_METHOD_VNPAY:
             vnpay_url = build_vnpay_payment_url(request, order)
             if not vnpay_url:
-                messages.error(request, "Khong tao duoc link VNPAY. Vui long thu lai sau.")
+                messages.error(request, "Không tạo được link VNPAY. Vui lòng thử lại sau.")
                 return redirect("shop:checkout")
-            messages.info(request, "Dang chuyen den cong VNPAY de thanh toan.")
+            messages.info(request, "Đang chuyển đến cổng VNPAY để thanh toán.")
             return redirect(vnpay_url)
 
         messages.success(request, f"Đặt hàng thành công. Mã đơn #{order.id}")
@@ -160,9 +182,7 @@ def checkout(request):
 
     payment_methods = PAYMENT_METHODS
     if not is_vnpay_configured():
-        payment_methods = [
-            method for method in PAYMENT_METHODS if method["value"] != PAYMENT_METHOD_VNPAY
-        ]
+        payment_methods = [m for m in PAYMENT_METHODS if m["value"] != PAYMENT_METHOD_VNPAY]
         if selected_payment_method == PAYMENT_METHOD_VNPAY:
             selected_payment_method = PAYMENT_METHOD_COD
 
@@ -192,6 +212,23 @@ def orders(request):
 
 
 @login_required
+def order_detail(request, order_id):
+    if request.user.is_staff:
+        order = get_object_or_404(
+            Order.objects.select_related("user", "address").prefetch_related("items"), id=order_id
+        )
+    else:
+        order = get_object_or_404(
+            Order.objects.select_related("user", "address").prefetch_related("items"),
+            id=order_id,
+            user=request.user,
+        )
+
+    get_or_create_order_trace_token(order)
+    return render(request, "shop/order_detail.html", {"order": order})
+
+
+@login_required
 @require_POST
 def cancel_order(request, order_id):
     order = get_object_or_404(Order.objects.prefetch_related("items"), id=order_id, user=request.user)
@@ -200,14 +237,22 @@ def cancel_order(request, order_id):
         return redirect("shop:orders")
 
     with transaction.atomic():
-        order.status = Order.STATUS_CANCELLED
-        order.save(update_fields=["status"])
-        for item in order.items.all():
-            if item.product:
-                item.product.stock += item.quantity
-                item.product.save(update_fields=["stock"])
+        _restore_order_items_stock(order)
+        if order.payment_method == PAYMENT_METHOD_COD:
+            order.status = Order.STATUS_PAYMENT_FAILED
+            order.save(update_fields=["status"])
+            messages.warning(
+                request,
+                "Đơn COD đã hủy, hàng đã trả về kho và ghi nhận thất bại thanh toán.",
+            )
+        else:
+            order.status = Order.STATUS_CANCELLED
+            order.save(update_fields=["status"])
+            messages.warning(
+                request,
+                "Đơn online đã hủy. Vui lòng hoàn tiền người mua qua VNPAY/Ngân hàng.",
+            )
 
-    messages.success(request, "Đã hủy đơn hàng.")
     return redirect("shop:orders")
 
 
@@ -236,6 +281,7 @@ def _collect_trace_zones(order):
         marker_key = f"{zone_name}-{zone_lat}-{zone_lng}"
         if marker_key in seen:
             continue
+
         seen.add(marker_key)
         zones.append(
             {
@@ -255,6 +301,7 @@ def order_trace_qr(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     if not request.user.is_staff and order.user_id != request.user.id:
         return HttpResponse(status=403)
+
     download_requested = request.GET.get("download", "").strip().lower() in {"1", "true", "yes"}
     if download_requested and not request.user.is_staff:
         return HttpResponse(status=403)
@@ -292,15 +339,18 @@ def trace_order(request, token):
         center_lat = 21.027763
         center_lng = 105.834160
 
-    context = {
-        "order": order,
-        "trace": trace,
-        "zones": zones,
-        "zones_json": json.dumps(zones),
-        "center_lat": center_lat,
-        "center_lng": center_lng,
-    }
-    return render(request, "shop/trace_order.html", context)
+    return render(
+        request,
+        "shop/trace_order.html",
+        {
+            "order": order,
+            "trace": trace,
+            "zones": zones,
+            "zones_json": json.dumps(zones),
+            "center_lat": center_lat,
+            "center_lng": center_lng,
+        },
+    )
 
 
 @login_required
@@ -309,6 +359,7 @@ def checkout_success(request):
     order = None
     if order_id.isdigit():
         order = Order.objects.filter(id=int(order_id), user=request.user).first()
+
     context = {"order": order}
     if order:
         context["order_status"] = order.status
@@ -324,14 +375,13 @@ def vnpay_return(request):
     params = request.GET.dict()
     order_id = params.get("vnp_TxnRef", "")
     order = None
-    # Allow callback from VNPAY even if user's session isn't preserved.
     if order_id.isdigit():
         order = Order.objects.filter(id=int(order_id)).first()
 
     if not params or not verify_vnpay_signature(params):
-        messages.error(request, "Chu ky VNPAY khong hop le.")
+        messages.error(request, "Chữ ký VNPAY không hợp lệ.")
     elif not order:
-        messages.error(request, "Khong tim thay don hang can xac nhan.")
+        messages.error(request, "Không tìm thấy đơn hàng cần xác nhận.")
     else:
         response_code = params.get("vnp_ResponseCode", "")
         txn_status = params.get("vnp_TransactionStatus", "")
@@ -339,16 +389,10 @@ def vnpay_return(request):
             if order.status == Order.STATUS_PENDING:
                 order.status = Order.STATUS_PROCESSING
                 order.save(update_fields=["status"])
-            messages.success(request, "Thanh toan VNPAY thanh cong.")
+            messages.success(request, "Thanh toán VNPAY thành công.")
         else:
-            # Mark the order as payment-failed so it's clear payment didn't complete
-            if order.status == Order.STATUS_PENDING:
-                try:
-                    order.status = Order.STATUS_PAYMENT_FAILED
-                    order.save(update_fields=["status"])
-                except Exception:
-                    pass
-            messages.warning(request, "Thanh toan VNPAY that bai hoac bi huy.")
+            _mark_order_payment_failed(order)
+            messages.warning(request, "Thanh toán VNPAY thất bại hoặc bị hủy.")
 
     success_url = reverse("shop:checkout_success")
     if order_id:
@@ -386,12 +430,22 @@ def vnpay_ipn(request):
             order.status = Order.STATUS_PROCESSING
             order.save(update_fields=["status"])
     else:
-        # If IPN indicates failure, mark payment failed
-        if order.status == Order.STATUS_PENDING:
-            try:
-                order.status = Order.STATUS_PAYMENT_FAILED
-                order.save(update_fields=["status"])
-            except Exception:
-                pass
+        _mark_order_payment_failed(order)
 
     return JsonResponse({"RspCode": "00", "Message": "Confirm Success"})
+
+
+@login_required
+def order_invoice(request, order_id):
+    if request.user.is_staff:
+        order = get_object_or_404(
+            Order.objects.select_related("user", "address").prefetch_related("items"), id=order_id
+        )
+    else:
+        order = get_object_or_404(
+            Order.objects.select_related("user", "address").prefetch_related("items"),
+            id=order_id,
+            user=request.user,
+        )
+
+    return render(request, "shop/order_invoice.html", {"order": order})

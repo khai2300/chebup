@@ -44,7 +44,9 @@ urlpatterns = [
         name="set_default_address",
     ),
     path("orders/", views.orders, name="orders"),
+    path("orders/<int:order_id>/", views.order_detail, name="order_detail"), # Xem chi tiet
     path("orders/<int:order_id>/cancel/", views.cancel_order, name="cancel_order"),
+    path("orders/<int:order_id>/invoice/", views.order_invoice, name="order_invoice"), # Xem hoa don
     path("orders/<int:order_id>/trace-qr.png", views.order_trace_qr, name="order_trace_qr"),
     path("trace/order/<uuid:token>/", views.trace_order, name="trace_order"),
     path("chat/", views.chat_view, name="chat"),

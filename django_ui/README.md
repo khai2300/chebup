@@ -29,6 +29,7 @@ shop:update_cart
 shop:remove_cart
 shop:checkout
 shop:orders
+shop:order_detail
 shop:cancel_order
 shop:account
 shop:add_address

@@ -3,6 +3,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+import unicodedata
 from decimal import Decimal
 
 from django.utils import timezone
@@ -11,11 +12,11 @@ from shop.models import Address, Order, Product, Promotion
 
 
 SYSTEM_PROMPT = (
-    "Ban la tro ly ban che bup trong he thong ecommerce. "
-    "Tra loi bang tieng Viet khong dau, than thien, ngan gon, khong may moc. "
-    "Neu thong tin lien quan den don hang cua user da co trong context thi uu tien su dung dung du lieu do. "
-    "Khong tu tao chinh sach khong co trong context. "
-    "Neu user hoi ve san pham/tra, uu tien de xuat san pham tu he thong neu co."
+    "Bạn là trợ lý bán chè búp trong hệ thống ecommerce. "
+    "Trả lời bằng tiếng Việt có dấu, thân thiện, ngắn gọn, không máy móc. "
+    "Nếu thông tin liên quan đến đơn hàng của user đã có trong context thì ưu tiên dùng đúng dữ liệu đó. "
+    "Không tự tạo chính sách không có trong context. "
+    "Nếu user hỏi về sản phẩm/trà, ưu tiên đề xuất sản phẩm từ hệ thống nếu có."
 )
 
 PROMO_LIMIT = 5
@@ -24,15 +25,25 @@ PRODUCT_SUGGESTION_LIMIT = 3
 DEFAULT_CHAT_PRODUCTS_LIMIT = 20
 DEFAULT_CATALOG_CONTEXT_LIMIT = 200
 
-GREETING_KEYWORDS = ["xin chao", "chao", "hello", "hi"]
-PROMO_KEYWORDS = ["khuyen mai", "voucher", "ma giam", "giam gia"]
-ORDER_KEYWORDS = ["don hang", "trang thai", "kiem tra don", "order", "ma don"]
-CANCEL_KEYWORDS = ["huy don", "huy"]
-SHIPPING_KEYWORDS = ["giao hang", "ship", "van chuyen"]
-PAYMENT_KEYWORDS = ["thanh toan", "payment", "cod", "bank", "vi"]
-ADDRESS_KEYWORDS = ["dia chi", "address"]
-PRODUCT_KEYWORDS = ["goi y", "de xuat", "san pham", "che", "tra", "nen mua", "mua gi", "tat ca"]
-THANKS_KEYWORDS = ["cam on", "thanks", "thank"]
+GREETING_KEYWORDS = ["xin chào", "chào", "hello", "hi"]
+PROMO_KEYWORDS = ["khuyến mãi", "voucher", "mã giảm", "giảm giá", "khuyen mai", "ma giam"]
+ORDER_KEYWORDS = ["đơn hàng", "trạng thái", "kiểm tra đơn", "order", "mã đơn", "don hang", "ma don"]
+CANCEL_KEYWORDS = ["hủy đơn", "hủy", "huy don", "huy"]
+SHIPPING_KEYWORDS = ["giao hàng", "ship", "vận chuyển", "giao hang", "van chuyen"]
+PAYMENT_KEYWORDS = ["thanh toán", "payment", "cod", "bank", "ví", "thanh toan"]
+ADDRESS_KEYWORDS = ["địa chỉ", "address", "dia chi"]
+PRODUCT_KEYWORDS = [
+    "gợi ý", "đề xuất", "sản phẩm", "chè", "trà", "nên mua", "mua gì", "tất cả",
+    "goi y", "de xuat", "san pham", "che", "tra",
+]
+THANKS_KEYWORDS = ["cảm ơn", "cam on", "thanks", "thank"]
+VIETNAMESE_DIACRITICS = set("ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ")
+PRICE_CHEAP_KEYWORDS = ["rẻ", "giá rẻ", "bình dân", "rẻ nhất", "thấp", "tiết kiệm", "re", "gia re"]
+PRICE_EXPENSIVE_KEYWORDS = ["đắt", "cao cấp", "đắt tiền", "đắt nhất", "xịn", "premium", "mac", "dat"]
+PRICE_HINT_TOKENS = {
+    "re", "gia", "thap", "binh", "dan", "tiet", "kiem", "nhat",
+    "dat", "cao", "cap", "mac", "xin", "premium", "tien",
+}
 
 
 def _env_int(name, default):
@@ -60,9 +71,19 @@ def _format_money(value):
     return f"{amount:,.0f} VND"
 
 
+def _normalize_text(text):
+    normalized = unicodedata.normalize("NFD", text or "")
+    stripped = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    return stripped.lower()
+
+
 def _contains_any(message, keywords):
-    text = (message or "").lower()
-    return any(word in text for word in keywords)
+    text = _normalize_text(message)
+    return any(_normalize_text(word) in text for word in keywords)
+
+
+def _has_vietnamese_diacritics(text):
+    return any(char in VIETNAMESE_DIACRITICS for char in (text or "").lower())
 
 
 def _active_promotions():
@@ -84,7 +105,8 @@ def _active_promotions():
 def _extract_order_id(text):
     if not text:
         return None
-    match = re.search(r"(?:#|don\\s*|order\\s*)(\\d{1,8})", text.lower())
+    normalized = _normalize_text(text)
+    match = re.search(r"(?:#|don\s*|order\s*)(\d{1,8})", normalized)
     if not match:
         return None
     try:
@@ -95,11 +117,12 @@ def _extract_order_id(text):
 
 def _order_status_text(status):
     mapping = {
-        Order.STATUS_PENDING: "dang cho xac nhan",
-        Order.STATUS_PROCESSING: "dang xu ly",
-        Order.STATUS_SHIPPED: "dang giao",
-        Order.STATUS_DELIVERED: "da giao",
-        Order.STATUS_CANCELLED: "da huy",
+        Order.STATUS_PENDING: "đang chờ xác nhận",
+        Order.STATUS_PROCESSING: "đang xử lý",
+        Order.STATUS_SHIPPED: "đang giao",
+        Order.STATUS_DELIVERED: "đã giao",
+        Order.STATUS_CANCELLED: "đã hủy",
+        Order.STATUS_PAYMENT_FAILED: "thất bại thanh toán",
     }
     return mapping.get(status, status)
 
@@ -108,14 +131,22 @@ def _looks_like_product_query(message):
     return _contains_any(message, PRODUCT_KEYWORDS)
 
 
+def _get_price_intent(message):
+    if _contains_any(message, PRICE_CHEAP_KEYWORDS):
+        return "cheap"
+    if _contains_any(message, PRICE_EXPENSIVE_KEYWORDS):
+        return "expensive"
+    return None
+
+
 def _product_search_tokens(text):
-    return [token for token in re.findall(r"[a-z0-9]+", (text or "").lower()) if len(token) > 2]
+    return [token for token in re.findall(r"[a-z0-9]+", _normalize_text(text)) if len(token) > 2]
 
 
 def _score_product(product, tokens):
-    haystack = (
+    haystack = _normalize_text(
         f"{product.name} {product.short_description} {product.description} {product.category.name}"
-    ).lower()
+    )
     score = sum(1 for token in set(tokens) if token in haystack)
     return score, product.stock, -float(product.price)
 
@@ -126,31 +157,48 @@ def _rank_products(user_message):
         return []
 
     tokens = _product_search_tokens(user_message)
-    if not tokens:
+    price_intent = _get_price_intent(user_message)
+    searchable_tokens = [token for token in tokens if token not in PRICE_HINT_TOKENS]
+
+    if price_intent:
+        sorted_prices = sorted(float(product.price) for product in products)
+        median_price = sorted_prices[len(sorted_prices) // 2]
+        if price_intent == "cheap":
+            filtered = [product for product in products if float(product.price) <= median_price]
+            filtered.sort(key=lambda p: (float(p.price), -p.stock, p.name))
+        else:
+            filtered = [product for product in products if float(product.price) >= median_price]
+            filtered.sort(key=lambda p: (-float(p.price), -p.stock, p.name))
+
+        if searchable_tokens:
+            matched = []
+            for product in filtered:
+                haystack = _normalize_text(
+                    f"{product.name} {product.short_description} {product.description} {product.category.name}"
+                )
+                if any(token in haystack for token in searchable_tokens):
+                    matched.append(product)
+            if matched:
+                return matched
+        return filtered
+
+    if not searchable_tokens:
         return sorted(products, key=lambda p: (-p.stock, float(p.price), p.category.name, p.name))
 
     scored = []
     for product in products:
-        score, stock, price_key = _score_product(product, tokens)
+        score, stock, price_key = _score_product(product, searchable_tokens)
         scored.append((score, stock, price_key, product.category.name, product.name, product))
 
     scored.sort(reverse=True, key=lambda item: (item[0], item[1], item[2]))
     ranked = [item[5] for item in scored]
-
-    # Neu co ket qua match, uu tien nhung item co score > 0 truoc, sau do bo sung phan con lai.
     matched = [item[5] for item in scored if item[0] > 0]
     unmatched = [item for item in ranked if item not in matched]
     return matched + unmatched
 
 
 def _format_product_line(product):
-    desc = (product.short_description or "").strip()
-    desc_text = f" - {desc}" if desc else ""
-    stock_text = f"Ton: {product.stock}"
-    return (
-        f"- {product.name} ({_format_money(product.price)}) | Danh muc: {product.category.name} | "
-        f"{stock_text}{desc_text} | /product/{product.id}/"
-    )
+    return f"- {product.name}: {_format_money(product.price)}"
 
 
 def _format_product_lines(products):
@@ -172,7 +220,9 @@ def _build_catalog_context(message):
     if not ranked:
         return "", []
 
-    limit = max(1, _env_int("CHAT_CATALOG_CONTEXT_LIMIT", DEFAULT_CATALOG_CONTEXT_LIMIT))
+    price_intent = _get_price_intent(message)
+    default_limit = 40 if price_intent else DEFAULT_CATALOG_CONTEXT_LIMIT
+    limit = max(1, _env_int("CHAT_CATALOG_CONTEXT_LIMIT", default_limit))
     catalog = ranked[:limit]
 
     category_counts = {}
@@ -182,13 +232,12 @@ def _build_catalog_context(message):
     category_summary = "; ".join(
         f"{category}: {count}" for category, count in sorted(category_counts.items(), key=lambda item: item[0].lower())
     )
-    lines = _format_product_lines(catalog)
 
     context = [
-        f"Tong so san pham trong catalog dua vao prompt: {len(catalog)}",
-        "So luong theo danh muc: " + category_summary,
-        "Danh sach chi tiet:",
-        *lines,
+        f"Tổng số sản phẩm trong catalog đưa vào prompt: {len(catalog)}",
+        "Số lượng theo danh mục: " + category_summary,
+        "Danh sách chi tiết:",
+        *_format_product_lines(catalog),
     ]
     return "\n".join(context), catalog
 
@@ -199,36 +248,34 @@ def suggest_products_for_chat(user_message, limit=None):
 
     ranked = _rank_products(user_message)
     if limit is None:
-        limit = _env_int("CHAT_PRODUCTS_LIMIT", DEFAULT_CHAT_PRODUCTS_LIMIT)
-
-    if limit <= 0:
-        return ranked
-    return ranked[:limit]
+        if _get_price_intent(user_message):
+            limit = min(8, _env_int("CHAT_PRODUCTS_LIMIT", DEFAULT_CHAT_PRODUCTS_LIMIT))
+        else:
+            limit = _env_int("CHAT_PRODUCTS_LIMIT", DEFAULT_CHAT_PRODUCTS_LIMIT)
+    return ranked if limit <= 0 else ranked[:limit]
 
 
 def _build_user_context(user):
     latest_orders = Order.objects.filter(user=user).select_related("address").order_by("-created_at")[:3]
-    default_address = Address.objects.filter(user=user, is_default=True).first()
-    if default_address is None:
-        default_address = Address.objects.filter(user=user).first()
+    default_address = Address.objects.filter(user=user, is_default=True).first() or Address.objects.filter(user=user).first()
     promotions = _active_promotions()
 
-    lines = [f"Ten user: {user.username}"]
+    lines = [f"Tên user: {user.username}"]
     if default_address:
-        lines.append(f"Dia chi mac dinh: {default_address.full_address}")
+        lines.append(f"Địa chỉ mặc định: {default_address.full_address}")
     else:
-        lines.append("Dia chi mac dinh: chua co")
+        lines.append("Địa chỉ mặc định: chưa có")
 
     if latest_orders:
         for order in latest_orders:
-            lines.append(f"Don #{order.id}: {_order_status_text(order.status)}, tong {_format_money(order.final_amount)}")
+            lines.append(f"Đơn #{order.id}: {_order_status_text(order.status)}, tổng {_format_money(order.final_amount)}")
     else:
-        lines.append("Don hang: chua co don nao")
+        lines.append("Đơn hàng: chưa có đơn nào")
 
     if promotions:
-        lines.append("Khuyen mai dang hoat dong: " + ", ".join(promotions))
+        lines.append("Khuyến mãi đang hoạt động: " + ", ".join(promotions))
     else:
-        lines.append("Khuyen mai dang hoat dong: chua co")
+        lines.append("Khuyến mãi đang hoạt động: chưa có")
 
     return "\n".join(lines)
 
@@ -236,34 +283,34 @@ def _build_user_context(user):
 def _rule_based_reply(user, user_message):
     message = (user_message or "").strip().lower()
     if not message:
-        return "Ban cu nhan cau hoi, minh se ho tro ngay."
+        return "Bạn cứ nhắn câu hỏi, mình sẽ hỗ trợ ngay."
 
     if _contains_any(message, GREETING_KEYWORDS):
         latest = Order.objects.filter(user=user).order_by("-created_at").first()
         if latest:
-            return f"Chao {user.username}. Don gan nhat cua ban la #{latest.id}, hien {_order_status_text(latest.status)}."
-        return f"Chao {user.username}. Ban can minh goi y che, kiem tra don hay ma giam gia?"
+            return f"Chào {user.username}. Đơn gần nhất của bạn là #{latest.id}, hiện {_order_status_text(latest.status)}."
+        return f"Chào {user.username}. Bạn cần mình gợi ý chè, kiểm tra đơn hay mã giảm giá?"
 
     if _contains_any(message, PROMO_KEYWORDS):
         promos = _active_promotions()
         if promos:
-            return "Hien shop dang co: " + ", ".join(promos) + ". Ban nhap ma o buoc checkout."
-        return "Hien tai chua co ma giam gia dang hoat dong."
+            return "Hiện shop đang có: " + ", ".join(promos) + ". Bạn nhập mã ở bước checkout."
+        return "Hiện tại chưa có mã giảm giá đang hoạt động."
 
     if _contains_any(message, ORDER_KEYWORDS):
         target_id = _extract_order_id(message)
         order_qs = Order.objects.filter(user=user)
         order = order_qs.filter(id=target_id).first() if target_id else order_qs.order_by("-created_at").first()
         if order:
-            return f"Don #{order.id} hien {_order_status_text(order.status)}. Tong thanh toan {_format_money(order.final_amount)}."
-        return "Minh chua tim thay don phu hop. Ban thu gui ma don dang #123."
+            return f"Đơn #{order.id} hiện {_order_status_text(order.status)}. Tổng thanh toán {_format_money(order.final_amount)}."
+        return "Mình chưa tìm thấy đơn phù hợp. Bạn thử gửi mã đơn dạng #123."
 
     if _contains_any(message, CANCEL_KEYWORDS):
         pending = Order.objects.filter(user=user, status=Order.STATUS_PENDING).order_by("-created_at")
         if pending.exists():
             ids = ", ".join(f"#{order.id}" for order in pending[:3])
-            return f"Ban dang co {pending.count()} don co the huy ({ids}). Vao trang Don hang va bam Huy don."
-        return "Hien tai ban khong co don Pending de huy."
+            return f"Bạn đang có {pending.count()} đơn có thể hủy ({ids}). Vào trang Đơn hàng và bấm Hủy đơn."
+        return "Hiện tại bạn không có đơn Pending để hủy."
 
     if _contains_any(message, SHIPPING_KEYWORDS):
         shipping_order = (
@@ -272,35 +319,42 @@ def _rule_based_reply(user, user_message):
             .first()
         )
         if shipping_order:
-            return f"Don #{shipping_order.id} dang {_order_status_text(shipping_order.status)}. Thuong mat 1-3 ngay lam viec tuy khu vuc."
-        return "Thoi gian giao thuong 1-3 ngay lam viec tuy khu vuc."
+            return f"Đơn #{shipping_order.id} đang {_order_status_text(shipping_order.status)}. Thường mất 1-3 ngày làm việc tùy khu vực."
+        return "Thời gian giao thường 1-3 ngày làm việc tùy khu vực."
 
     if _contains_any(message, PAYMENT_KEYWORDS):
-        return "Shop ho tro 2 cach thanh toan: COD va online bang ngan hang (co ma QR)."
+        return "Shop hỗ trợ 2 cách thanh toán: COD và online bằng ngân hàng (có mã QR)."
 
     if _contains_any(message, ADDRESS_KEYWORDS):
         count = Address.objects.filter(user=user).count()
         if count == 0:
-            return "Ban chua co dia chi. Vao Tai khoan de them dia chi truoc khi checkout."
-        return f"Ban dang co {count} dia chi giao hang. Ban co the dat 1 dia chi mac dinh."
+            return "Bạn chưa có địa chỉ. Vào Tài khoản để thêm địa chỉ trước khi checkout."
+        return f"Bạn đang có {count} địa chỉ giao hàng. Bạn có thể đặt 1 địa chỉ mặc định."
 
     if _contains_any(message, PRODUCT_KEYWORDS):
-        products = suggest_products_for_chat(message, limit=10)
+        price_intent = _get_price_intent(message)
+        products = suggest_products_for_chat(message, limit=6 if price_intent else 10)
         if products:
             lines = _format_product_lines(products)
+            if price_intent == "cheap":
+                header = f"Mình tìm thấy {len(products)} sản phẩm giá rẻ phù hợp:"
+            elif price_intent == "expensive":
+                header = f"Mình tìm thấy {len(products)} sản phẩm cao cấp/phân khúc giá cao:"
+            else:
+                header = f"Mình tìm thấy {len(products)} sản phẩm phù hợp trong hệ thống:"
             return (
-                f"Minh tim thay {len(products)} san pham phu hop trong he thong:\n"
+                header + "\n"
                 + "\n".join(lines)
-                + "\nBan co the noi muc gia hoac huong vi de minh loc tiep."
+                + "\nBạn có thể nói mức giá hoặc hương vị để mình lọc tiếp."
             )
-        return "Kho san pham dang cap nhat, ban thu lai sau it phut."
+        return "Kho sản phẩm đang cập nhật, bạn thử lại sau ít phút."
 
     if _contains_any(message, THANKS_KEYWORDS):
-        return "Rat vui duoc ho tro ban. Can gi ban cu nhan minh ngay."
+        return "Rất vui được hỗ trợ bạn. Cần gì bạn cứ nhắn mình ngay."
 
     return (
-        "Minh da hieu y ban. Ban co the hoi tu nhien, vi du: "
-        "'kiem tra don #12', 'goi y che thanh mat', 'co ma giam gia khong?'."
+        "Mình đã hiểu ý bạn. Bạn có thể hỏi tự nhiên, ví dụ: "
+        "'kiểm tra đơn #12', 'gợi ý chè thanh mát', 'có mã giảm giá không?'."
     )
 
 
@@ -431,7 +485,7 @@ def generate_chat_reply(user, conversation_messages, user_message):
     if catalog_text:
         system_parts.append("Context catalog:\n" + catalog_text)
     elif suggest_lines:
-        system_parts.append("Goi y san pham nhanh:\n" + "\n".join(suggest_lines))
+        system_parts.append("Gợi ý sản phẩm nhanh:\n" + "\n".join(suggest_lines))
     system_text = "\n\n".join(system_parts)
 
     has_gemini = bool(os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GOOGLE_API_KEY", "").strip())
@@ -450,13 +504,17 @@ def generate_chat_reply(user, conversation_messages, user_message):
         llm_reply, mode = _call_openai(llm_messages)
 
     if llm_reply:
+        # Hard guard: if provider output is non-accented Vietnamese, force local Vietnamese response.
+        if not _has_vietnamese_diacritics(llm_reply):
+            fallback = _rule_based_reply(user, user_message)
+            return fallback, "fallback_force_vi"
         if _looks_like_product_query(user_message):
             check_products = catalog_products or suggest_products
             if check_products:
                 reply_lower = llm_reply.lower()
                 if not any(product.name.lower() in reply_lower for product in check_products[:8]):
                     extra_lines = _format_product_lines(check_products[:8])
-                    llm_reply += "\n\nGoi y san pham tu he thong:\n" + "\n".join(extra_lines)
+                    llm_reply += "\n\nGợi ý sản phẩm từ hệ thống:\n" + "\n".join(extra_lines)
         return llm_reply, mode
 
     fallback = _rule_based_reply(user, user_message)
@@ -465,8 +523,8 @@ def generate_chat_reply(user, conversation_messages, user_message):
 
 def quick_replies():
     return [
-        "Kiem tra don hang gan nhat",
-        "Co ma giam gia nao dang dung?",
-        "Goi y tat ca loai che hien co",
-        "Huong dan thanh toan bang COD",
+        "Kiểm tra đơn hàng gần nhất",
+        "Có mã giảm giá nào đang dùng?",
+        "Gợi ý tất cả loại chè hiện có",
+        "Hướng dẫn thanh toán bằng COD",
     ]

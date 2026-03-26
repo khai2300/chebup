@@ -1,4 +1,4 @@
-<article class="col-12 col-md-6 col-xl-3">
+﻿<article class="col-12 col-md-6 col-xl-3">
   <div class="product-card h-100">
     <a href="{% url 'shop:product_detail' product.id %}" class="product-thumb">
       {% if product.image %}
@@ -20,14 +20,22 @@
         <span>Kho: {{ product.stock }}</span>
       </div>
       <div class="product-footer">
-        <div class="product-price">{{ product.price|floatformat:0 }} VND</div>
+        <div class="product-price">{{ product.price|floatformat:0 }} VND / kg</div>
         <div class="product-actions">
           <a href="{% url 'shop:product_detail' product.id %}" class="btn btn-outline-success btn-sm">Chi tiết</a>
-          <form method="post" action="{% url 'shop:add_to_cart' product.id %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-success btn-sm">Thêm giỏ</button>
-          </form>
+          {% if product.stock > 0 %}
+            <form method="post" action="{% url 'shop:add_to_cart' product.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="weight_grams" value="100">
+              <button type="submit" class="btn btn-success btn-sm">Thêm giỏ</button>
+            </form>
+          {% else %}
+            <button type="button" class="btn btn-secondary btn-sm" disabled>Hết hàng</button>
+          {% endif %}
         </div>
+        {% if product.stock <= 0 %}
+          <small class="text-danger">Sản phẩm đã hết hàng, chờ cập nhật thêm.</small>
+        {% endif %}
       </div>
     </div>
   </div>

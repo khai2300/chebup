@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import hmac
 import urllib.parse
 from datetime import timedelta
@@ -59,7 +59,7 @@ def build_vnpay_payment_url(request, order):
         "vnp_Amount": str(amount),
         "vnp_CurrCode": "VND",
         "vnp_TxnRef": str(order.id),
-        "vnp_OrderInfo": f"Thanh toan don hang #{order.id}",
+        "vnp_OrderInfo": f"Thanh toán đơn hàng #{order.id}",
         "vnp_OrderType": "other",
         "vnp_Locale": getattr(settings, "VNPAY_LOCALE", "vn"),
         "vnp_ReturnUrl": return_url,
@@ -87,3 +87,4 @@ def verify_vnpay_signature(params):
     data = {key: value for key, value in params.items() if key not in {"vnp_SecureHash", "vnp_SecureHashType"}}
     calculated = _sign_params(data, secret)
     return hmac.compare_digest(calculated.lower(), secure_hash.lower())
+

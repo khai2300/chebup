@@ -1,4 +1,4 @@
-import socket
+﻿import socket
 from decimal import Decimal
 from urllib.parse import urlencode
 
@@ -18,6 +18,13 @@ PAYMENT_METHODS = [
     {"value": PAYMENT_METHOD_VNPAY, "label": "Thanh toán qua VNPAY"},
 ]
 PAYMENT_METHOD_VALUES = {method["value"] for method in PAYMENT_METHODS}
+
+WEIGHT_OPTIONS = [
+    {"grams": 100, "value": "100", "label": "1 lạng (100g)", "multiplier": Decimal("0.10")},
+    {"grams": 200, "value": "200", "label": "2 lạng (200g)", "multiplier": Decimal("0.20")},
+    {"grams": 500, "value": "500", "label": "5 lạng (500g)", "multiplier": Decimal("0.50")},
+]
+WEIGHT_OPTIONS_BY_VALUE = {option["value"]: option for option in WEIGHT_OPTIONS}
 
 
 def get_or_create_order_trace_token(order):
@@ -39,7 +46,6 @@ def build_public_url(request, path):
     if host and not host.startswith(("127.0.0.1", "localhost", "[::1]", "::1")):
         return f"{scheme}://{host}/{path.lstrip('/')}"
 
-    # Fallback when admin is opened via localhost: try LAN IP so phone can access QR URL.
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.connect(("8.8.8.8", 80))
@@ -64,7 +70,7 @@ def build_order_trace_url(request, order):
 
 def calculate_cart_summary(user, promo_code=""):
     cart_items = list(CartItem.objects.select_related("product").filter(user=user))
-    subtotal = sum((item.product.price * item.quantity for item in cart_items), Decimal("0"))
+    subtotal = sum((item.subtotal for item in cart_items), Decimal("0"))
     discount = Decimal("0")
     promotion = None
 
@@ -95,25 +101,24 @@ def calculate_cart_summary(user, promo_code=""):
     }
 
 
+def get_weight_option(selected_value):
+    value = (selected_value or "").strip()
+    if value in WEIGHT_OPTIONS_BY_VALUE:
+        return WEIGHT_OPTIONS_BY_VALUE[value]
+    return WEIGHT_OPTIONS[0]
+
+
 def build_bank_transfer_info(total_amount, username=""):
     bank_name = (getattr(settings, "BANK_TRANSFER_BANK_NAME", "") or "Techcombank").strip()
     bank_code = (getattr(settings, "BANK_TRANSFER_BANK_CODE", "") or "TCB").strip().upper()
     account_name = (getattr(settings, "BANK_TRANSFER_ACCOUNT_NAME", "") or "NGUYEN TRI KHAI").strip()
-    account_number = (
-        getattr(settings, "BANK_TRANSFER_ACCOUNT_NUMBER", "") or "19037577368017"
-    ).strip()
+    account_number = (getattr(settings, "BANK_TRANSFER_ACCOUNT_NUMBER", "") or "19037577368017").strip()
     note_prefix = (getattr(settings, "BANK_TRANSFER_NOTE_PREFIX", "") or "THANH TOAN").strip()
     amount_int = int(total_amount) if total_amount else 0
     transfer_note = f"{note_prefix} {username}".strip()
 
     qr_base = f"https://img.vietqr.io/image/{bank_code}-{account_number}-compact2.png"
-    query = urlencode(
-        {
-            "amount": amount_int,
-            "addInfo": transfer_note,
-            "accountName": account_name,
-        }
-    )
+    query = urlencode({"amount": amount_int, "addInfo": transfer_note, "accountName": account_name})
     return {
         "method_value": PAYMENT_METHOD_BANK_TRANSFER,
         "bank_name": bank_name,
