@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import user_passes_test
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -134,6 +134,13 @@ def _normalize_dashboard_period(raw_period):
     if period_key not in DASHBOARD_PERIODS:
         period_key = "7d"
     return period_key, DASHBOARD_PERIODS[period_key]
+
+
+def _normalize_stock_filter(raw_value):
+    stock_key = (raw_value or "").strip().lower()
+    if stock_key not in {"", "in_stock", "low_stock", "out_of_stock"}:
+        stock_key = ""
+    return stock_key
 
 
 def _build_change_info(current_value, previous_value):
@@ -447,7 +454,32 @@ def admin_products(request):
         messages.error(request, "Hành động không hợp lệ.")
         return redirect("shop:admin_products")
 
+    query = request.GET.get("q", "").strip()
+    category_filter = request.GET.get("category", "").strip()
+    zone_filter = request.GET.get("zone", "").strip()
+    stock_filter = _normalize_stock_filter(request.GET.get("stock"))
+
     products = Product.objects.select_related("category", "source_zone").all()
+    if query:
+        products = products.filter(
+            Q(name__icontains=query)
+            | Q(description__icontains=query)
+            | Q(short_description__icontains=query)
+            | Q(category__name__icontains=query)
+            | Q(source_zone__name__icontains=query)
+            | Q(source_zone__province__icontains=query)
+        )
+    if category_filter.isdigit():
+        products = products.filter(category_id=int(category_filter))
+    if zone_filter.isdigit():
+        products = products.filter(source_zone_id=int(zone_filter))
+    if stock_filter == "in_stock":
+        products = products.filter(stock__gt=5)
+    elif stock_filter == "low_stock":
+        products = products.filter(stock__gte=1, stock__lte=5)
+    elif stock_filter == "out_of_stock":
+        products = products.filter(stock=0)
+
     categories = Category.objects.all()
     zones = ProductionZone.objects.all()
     return render(
@@ -457,6 +489,12 @@ def admin_products(request):
             "products": products,
             "categories": categories,
             "zones": zones,
+            "filters": {
+                "q": query,
+                "category": category_filter,
+                "zone": zone_filter,
+                "stock": stock_filter,
+            },
         },
     )
 

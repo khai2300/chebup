@@ -71,6 +71,50 @@
   <div class="card-body">
     <h5 class="mb-1">Danh sách sản phẩm (admin có thể sửa/xóa)</h5>
     <small class="text-muted d-block mb-3">Có thể sửa nhiều sản phẩm rồi bấm một lần để lưu tất cả.</small>
+    <form method="get" class="row g-2 align-items-end mb-3">
+      <div class="col-lg-4">
+        <label class="form-label small text-muted mb-1">Từ khóa</label>
+        <input class="form-control" type="text" name="q" value="{{ filters.q }}" placeholder="Tên, mô tả, danh mục, khu nguồn...">
+      </div>
+      <div class="col-lg-3">
+        <label class="form-label small text-muted mb-1">Danh mục</label>
+        <select class="form-select" name="category">
+          <option value="">Tất cả danh mục</option>
+          {% for category in categories %}
+            <option value="{{ category.id }}" {% if filters.category == category.id|stringformat:'s' %}selected{% endif %}>
+              {{ category.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-3">
+        <label class="form-label small text-muted mb-1">Khu nguồn</label>
+        <select class="form-select" name="zone">
+          <option value="">Tất cả khu nguồn</option>
+          {% for zone in zones %}
+            <option value="{{ zone.id }}" {% if filters.zone == zone.id|stringformat:'s' %}selected{% endif %}>
+              {{ zone.name }} - {{ zone.province }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-2">
+        <label class="form-label small text-muted mb-1">Tồn kho</label>
+        <select class="form-select" name="stock">
+          <option value="" {% if not filters.stock %}selected{% endif %}>Tất cả</option>
+          <option value="in_stock" {% if filters.stock == "in_stock" %}selected{% endif %}>Còn nhiều (&gt;5)</option>
+          <option value="low_stock" {% if filters.stock == "low_stock" %}selected{% endif %}>Sắp hết (1-5)</option>
+          <option value="out_of_stock" {% if filters.stock == "out_of_stock" %}selected{% endif %}>Hết hàng</option>
+        </select>
+      </div>
+      <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <small class="text-muted">Đang hiển thị {{ products|length }} sản phẩm theo bộ lọc hiện tại.</small>
+        <div class="d-flex gap-2">
+          <a class="btn btn-outline-secondary btn-sm" href="{% url 'shop:admin_products' %}">Xóa bộ lọc</a>
+          <button class="btn btn-outline-success btn-sm" type="submit">Lọc danh sách</button>
+        </div>
+      </div>
+    </form>
     {% if products %}
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
